@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from apps.conflicts.models import Conflict, ConflictItem
+from apps.conflicts.models import Conflict, ConflictItem, OptionItem
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -45,8 +45,23 @@ class ConflictSerializer(serializers.ModelSerializer):
 
 
 
+class OptionItemSerializer(serializers.ModelSerializer):
+    conflict_item = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = OptionItem
+        field = (
+            "id",
+            "created_at",
+            "updated_at",
+            "conflict_item",
+            "value_option",
+        )
+
+
 class ConflictItemSerializer(serializers.ModelSerializer):
     conflict = ConflictSerializer()
+    options = OptionItemSerializer(many=True, read_only=True, source='point')
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
 
     class Meta:
@@ -61,4 +76,5 @@ class ConflictItemSerializer(serializers.ModelSerializer):
             "value_partner",
             "agreed_value",
             "is_agreed",
+            "options",
         )

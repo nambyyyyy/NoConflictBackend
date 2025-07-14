@@ -36,4 +36,5 @@ urlpatterns = [
     path("profile/", include("apps.profiles.urls")),
     path("login/", include("apps.login.urls")),
     path("partners/", include("apps.partners.urls")),
+    path("conflicts/", include("apps.conflicts.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

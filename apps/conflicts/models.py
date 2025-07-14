@@ -69,7 +69,7 @@ class Conflict(IsDeletedModel):
 
     def update_progress(self):
         items = self.items.all()
-        if items.exist():
+        if items.exists():
             agreed_count = items.filter(is_agreed=True).count()
             self.progress = agreed_count / items.count() * 100
         else:
@@ -116,3 +116,16 @@ class ConflictItem(BaseModel):
         self.is_agreed = True
         self.save()
         self.conflict.update_progress()  # Обновить прогресс
+
+
+class OptionItem(BaseModel):
+    conflict_item = models.ForeignKey(ConflictItem, on_delete=models.CASCADE, related_name="point")
+    value_option = models.CharField(related_name="option")
+
+    class Meta:
+        unique_together = ("conflict_item", "value_option")
+    
+    def __str__(self):
+        return f"OptionItem {self.value_option} for {self.conflict_item}"
+
+
