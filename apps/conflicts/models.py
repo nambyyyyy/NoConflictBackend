@@ -14,7 +14,8 @@ class Conflict(IsDeletedModel):
         ("pending", "Ожидает партнера"),  # Когда создан без партнёра
         ("in_progress", "В процессе"),  # Когда оба пользователя присоединены
         ("resolved", "Разрешен"),  # Полностью согласован или manually завершён
-        ("сancelled", "Отменен"),  # Отказ от продолжения
+        ("cancelled", "Отменен"),  # Отказ от продолжения
+        ("abandoned", "Заброшен")  # Заброшен. Вызывается отдельно скриптом в случае истечения срока действия. 
     ]
 
     creator = models.ForeignKey(
@@ -62,9 +63,11 @@ class Conflict(IsDeletedModel):
                 "Нельзя завершить без 100% прогресса, если не manually."
             )
 
-    def abandon(self):
+    def cancel(self): 
         # Отклоненный конфликт
-        self.status = "abandoned"
+        if self.status in ("cancelled", "Заброшен", "resolved"):
+            raise ValidationError("Конфликт завершён, отменён или заброшен.")
+        self.status = "cancelled"
         self.save()
 
     def update_progress(self):
