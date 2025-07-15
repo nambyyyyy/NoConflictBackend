@@ -33,6 +33,9 @@ class Conflict(IsDeletedModel):
     slug = models.SlugField(unique=True, blank=True)
     progress = models.FloatField(default=0.0)  # % прогресса
     resolved_at = models.DateTimeField(null=True, blank=True)
+    deleted_by_creator = models.BooleanField(default=False)
+    deleted_by_partner = models.BooleanField(default=False)
+
 
     def save(self, *args, **kwargs):
         if not self.slug and not self.pk:  # Генерируем slug только при создании
@@ -78,6 +81,30 @@ class Conflict(IsDeletedModel):
         else:
             self.progress = 0.0
         self.save(update_fields=["progress"])
+    
+    def soft_delete_for_user(self, user):
+        if user == self.creator:
+            self.deleted_by_creator = True
+        elif self.partner and user == self.partner:
+            self.deleted_by_partner = True
+        else:
+            raise ValidationError("User не участник этого конфликта.")
+        
+        # Глобальное удаление, если оба удалили
+        if self.deleted_by_creator and self.deleted_by_partner:
+            self.delete() 
+        
+        self.save()
+    
+    @classmethod
+    def get_for_user(cls, user):
+        return cls.objects.filter(
+            is_deleted=False,
+        ).filter(
+            (models.Q(creator=user) & models.Q(deleted_by_creator=False)) |
+            (models.Q(partner=user) & models.Q(deleted_by_partner=False))
+        )
+
 
     def __str__(self):
         return f"Conflict {self.id} by {self.creator.username} ({self.status})"

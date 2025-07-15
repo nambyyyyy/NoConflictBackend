@@ -6,6 +6,7 @@ from apps.conflicts.serializers import ConflictSerializer, ConflictItemSerialize
 from apps.common.permissions import IsOwnerOnly, IsOwnerOrRead
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 
@@ -95,6 +96,79 @@ class ConflictCreateView(APIView):
             {"error": "Ошибка при создании конфликта."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+            
+
+class ConflictDetailView(APIView):
+    """Представление для отмены/удаления конфликта"""
+    
+    permission_classes = [IsOwnerOnly]
+    
+    def _get_conflict(self, **kwargs):
+        conflict_id = kwargs.get('pk') 
+        
+        if not conflict_id:
+            return Response(
+                {"error": "Неверный id конфликта"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        conflict = get_object_or_404(Conflict, pk=conflict_id, is_deleted=False)
+        return conflict
+    
+    def _serialization_conflict(self, conflict, user):
+        serializer = ConflictSerializer(conflict)
+        data = serializer.data
+        data['cancelled_by'] = user.username
+        return data
+    
+    # def get(self, request, *args, **kwargs):
+    #     conflict = self._get_conflict(**kwargs)
+    #     if isinstance(conflict, Response):
+    #         return conflict
+        
+    #     data = self._serialization_conflict(conflict=conflict, user=request.user)
+    #     return Response(data, status=status.HTTP_200_OK)
+        
+    
+    def patch(self, request, *args, **kwargs):
+        conflict = self._get_conflict(**kwargs)
+        if isinstance(conflict, Response):
+            return conflict
+        
+        try:
+            conflict.cancel()
+            if conflict.partner:
+                # Здесь должно быть уведомление от отмене второму юзеру (если он уже подключен)
+                pass
+        except ValidationError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        data = self._serialization_conflict(conflict=conflict, user=request.user)
+        return Response(data, status=status.HTTP_200_OK)
+    
+    def delete(self, request, *args, **kwargs):
+        conflict = self._get_conflict(**kwargs)
+        if isinstance(conflict, Response):
+            return conflict
+        
+        if conflict.status not in ("resolved", "cancelled", "abandoned"):
+            return Response({"error": "Можно удалить только после завершения или отмены"}, 
+                            status=status.HTTP_400_BAD_REQUEST)
+            
+        try:
+            conflict.soft_delete_for_user(user=request.user)
+        except ValidationError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        return Response(status=status.HTTP_200_OK)
+    
+    
 
 
 
