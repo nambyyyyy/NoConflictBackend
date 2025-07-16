@@ -10,9 +10,10 @@ from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 
+
 class ConflictCreateView(APIView):
     """Представление для создания конфликта"""
-    
+
     serializer_class = ConflictSerializer
     permission_classes = [IsOwnerOnly]
 
@@ -20,14 +21,14 @@ class ConflictCreateView(APIView):
         # GET: Возвращает данные для формы + подтянутые ConflictItem
         # Подтягиваем доступные items (пример: items юзера без привязанного конфликта)
         try:
-            user_items = ConflictItem.objects.filter(
-                user=request.user, conflict__isnull=True
-            ).prefetch_related('point').order_by('-created_at')
+            user_items = (
+                ConflictItem.objects.filter(user=request.user, conflict__isnull=True)
+                .prefetch_related("point")
+                .order_by("-created_at")
+            )
             items_serializer = ConflictItemSerializer(user_items, many=True)
             available_items = items_serializer.data
-        except (
-            Exception
-        ) as e:
+        except Exception as e:
             return Response(
                 {"error": "Ошибка подтягивания items: " + str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -40,36 +41,37 @@ class ConflictCreateView(APIView):
             "status_choices": status_choices,
         }
         return Response(response_data, status=status.HTTP_200_OK)
-    
 
     def post(self, request):
-        serializer = self.serializer_class(data=request.data) 
+        serializer = self.serializer_class(data=request.data)
         if not serializer.is_valid():
             return Response(
-            {"error": "Данные не валидны.", "details": serializer.errors},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    
+                {"error": "Данные не валидны.", "details": serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
-        # Создаём конфликт
+            # Создаём конфликт
             conflict = serializer.save(creator=request.user)
-        
-        # Привязка выбранных items
-            item_ids = request.data.get('item_ids', [])
+
+            # Привязка выбранных items
+            item_ids = request.data.get("item_ids", [])
             if not item_ids:
                 raise ValidationError("Не выбрано ни одного item для конфликта.")
-        
-            items = ConflictItem.objects.filter(id__in=item_ids, user=request.user, conflict__isnull=True)
+
+            items = ConflictItem.objects.filter(
+                id__in=item_ids, user=request.user, conflict__isnull=True
+            )
             if not items.exists():
                 raise ValidationError("Выбранные items не найдены или уже привязаны.")
-        
+
             items.update(conflict=conflict)  # Привязываем
-        
+
             # Обработка партнёра: два сценария
-            partner_id = request.data.get('partner_id')
+            partner_id = request.data.get("partner_id")
             invite_link = None
             if partner_id:
-            # Сценарий 1: существующий партнёр выбран из списка
+                # Сценарий 1: существующий партнёр выбран из списка
                 try:
                     partner = User.objects.get(id=partner_id)
                     # Здесь добавим уведомление партнеру в личный кабинет (через signals)
@@ -77,109 +79,100 @@ class ConflictCreateView(APIView):
                     raise ValidationError("Выбранный партнёр не существует.")
             else:
                 # Сценарий 2: партнёра нет — генерируем уникальную ссылку для приглашения
-                invite_link = f"https://noconflict.com/join-conflict/{conflict.slug}/" 
-        
+                invite_link = f"https://noconflict.com/join-conflict/{conflict.slug}/"
 
             response_data = {
-            "slug": conflict.slug,
-            "status": "pending",
-            "invite_link": invite_link,
-        }
+                "slug": conflict.slug,
+                "status": "pending",
+                "invite_link": invite_link,
+            }
             return Response(response_data, status=status.HTTP_201_CREATED)
-    
+
         except ValidationError as ve:
             return Response({"error": str(ve)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-        # Логируй для дебагa (в проде используй logging)
+            # Логируй для дебагa (в проде используй logging)
             print(f"Ошибка: {e}")  # Замени на logger.error
             return Response(
-            {"error": "Ошибка при создании конфликта."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
-            
-
-class ConflictDetailView(APIView):
-    """Представление для отмены/удаления конфликта"""
-    
-    permission_classes = [IsOwnerOnly]
-    
-    def _get_conflict(self, **kwargs):
-        conflict_id = kwargs.get('pk') 
-        
-        if not conflict_id:
-            return Response(
-                {"error": "Неверный id конфликта"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Ошибка при создании конфликта."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        conflict = get_object_or_404(Conflict, pk=conflict_id, is_deleted=False)
+
+class ConflictDetailView(APIView):
+    """Представление для действий с конфликтом"""
+
+    permission_classes = [IsOwnerOnly]
+
+    def _get_conflict(self, **kwargs):
+        conflict_id = kwargs.get("pk")
+
+        if not conflict_id:
+            return Response(
+                {"error": "Неверный id конфликта"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        try:
+            conflict = Conflict.objects.get(pk=conflict_id, is_deleted=False)
+        except Conflict.DoesNotExist:
+            return Response(
+                {"error": "Конфликт не найден или удален"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         return conflict
-    
+
     def _serialization_conflict(self, conflict, user):
         serializer = ConflictSerializer(conflict)
         data = serializer.data
-        data['cancelled_by'] = user.username
+        data["cancelled_by"] = user.username
         return data
-    
-    # def get(self, request, *args, **kwargs):
-    #     conflict = self._get_conflict(**kwargs)
-    #     if isinstance(conflict, Response):
-    #         return conflict
-        
-    #     data = self._serialization_conflict(conflict=conflict, user=request.user)
-    #     return Response(data, status=status.HTTP_200_OK)
-        
-    
+
+    def get(self, request, *args, **kwargs):
+        conflict = self._get_conflict(**kwargs)
+        if isinstance(conflict, Response):
+            return conflict
+
+        if (request.user == conflict.creator and conflict.deleted_by_creator) or (
+            request.user == conflict.partner and conflict.deleted_by_partner
+        ):
+            return Response(
+                {"error": "Конфликт удален"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        serializer = ConflictSerializer(conflict)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     def patch(self, request, *args, **kwargs):
         conflict = self._get_conflict(**kwargs)
         if isinstance(conflict, Response):
             return conflict
-        
+
         try:
             conflict.cancel()
             if conflict.partner:
                 # Здесь должно быть уведомление от отмене второму юзеру (если он уже подключен)
                 pass
         except ValidationError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
         data = self._serialization_conflict(conflict=conflict, user=request.user)
         return Response(data, status=status.HTTP_200_OK)
-    
+
     def delete(self, request, *args, **kwargs):
         conflict = self._get_conflict(**kwargs)
         if isinstance(conflict, Response):
             return conflict
-        
+
         if conflict.status not in ("resolved", "cancelled", "abandoned"):
-            return Response({"error": "Можно удалить только после завершения или отмены"}, 
-                            status=status.HTTP_400_BAD_REQUEST)
-            
+            return Response(
+                {"error": "Можно удалить только после завершения или отмены"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             conflict.soft_delete_for_user(user=request.user)
         except ValidationError as e:
-            return Response(
-                {"error": str(e)},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+
         return Response(status=status.HTTP_200_OK)
-    
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
