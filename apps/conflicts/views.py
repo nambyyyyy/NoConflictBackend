@@ -128,6 +128,7 @@ class ConflictDetailView(APIView):
         return data
 
     def get(self, request, *args, **kwargs):
+        # Получение конфликта
         conflict = self._get_conflict(**kwargs)
         if isinstance(conflict, Response):
             return conflict
@@ -140,10 +141,15 @@ class ConflictDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        serializer = ConflictSerializer(conflict)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        conflict_items = (
+            ConflictItem.objects.filter(conflict=conflict)
+            .prefetch_related("point")
+            .order_by("-created_at")
+        )
+        return Response(1, status=status.HTTP_200_OK)
 
     def patch(self, request, *args, **kwargs):
+        # Отмена конфликта
         conflict = self._get_conflict(**kwargs)
         if isinstance(conflict, Response):
             return conflict
@@ -160,6 +166,7 @@ class ConflictDetailView(APIView):
         return Response(data, status=status.HTTP_200_OK)
 
     def delete(self, request, *args, **kwargs):
+        # Удаление конфликта
         conflict = self._get_conflict(**kwargs)
         if isinstance(conflict, Response):
             return conflict
