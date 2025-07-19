@@ -123,24 +123,30 @@ class ConflictItem(BaseModel):
     )
     item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
     
+    available_options = models.ManyToManyField(
+        "OptionChoice", 
+        related_name="used_in_items"
+    )
+
+    # 2. Выбор создателя и партнера теперь ссылается на OptionChoice.
     creator_choice = models.ForeignKey(
-        "OptionItem", 
+        "OptionChoice", 
         on_delete=models.SET_NULL, 
         related_name="chosen_by_creators", 
         null=True, blank=True
     )
     partner_choice = models.ForeignKey(
-        "OptionItem", 
+        "OptionChoice", 
         on_delete=models.SET_NULL, 
         related_name="chosen_by_partners", 
         null=True, blank=True
     )
     agreed_choice = models.ForeignKey(
-        "OptionItem", 
+        "OptionChoice", 
         on_delete=models.SET_NULL, 
         related_name="agreed_in_conflicts", 
         null=True, blank=True
-    ) # Согласованная версия (копируется при подтверждении)
+    )
     
     is_agreed = models.BooleanField(default=False)
     
@@ -175,6 +181,14 @@ class ConflictItem(BaseModel):
         self.agreed_choice = None
 
 
+class OptionChoice(BaseModel):
+    value = models.TextField(unique=True) # Текст варианта. Должен быть уникальным.
+    is_predefined = models.BooleanField(default=False) # Флаг, что это наш "шаблон"
+
+    def __str__(self):
+        return self.value
+    
+    
 class OptionItem(BaseModel):
     conflict_item = models.ForeignKey(ConflictItem, on_delete=models.CASCADE, related_name="options")
     value = models.TextField()
