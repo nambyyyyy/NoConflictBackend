@@ -57,7 +57,7 @@ class Conflict(IsDeletedModel):
 
     def resolve(self, manual=False):
         # Логика завершения: manual=True позволяет завершить с progress < 100
-        if manual or self.progress == 100:
+        if manual or self.progress >= 100:
             self.status = "resolved"
             self.resolved_at = timezone.now()
             self.save()
@@ -80,7 +80,7 @@ class Conflict(IsDeletedModel):
             self.progress = agreed_count / items.count() * 100
         else:
             self.progress = 0.0
-        self.save(update_fields=["progress"])
+
     
     def soft_delete_for_user(self, user):
         if user == self.creator:
@@ -122,40 +122,75 @@ class ConflictItem(BaseModel):
         Conflict, on_delete=models.CASCADE, related_name="items"
     )
     item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
-    value_creator = models.TextField(blank=True)  # Версия User A
-    value_partner = models.TextField(blank=True)  # Версия User B
-    agreed_value = models.TextField(
-        blank=True
-    )  # Согласованная версия (копируется при подтверждении)
+    
+    creator_choice = models.ForeignKey(
+        "OptionItem", 
+        on_delete=models.SET_NULL, 
+        related_name="chosen_by_creators", 
+        null=True, blank=True
+    )
+    partner_choice = models.ForeignKey(
+        "OptionItem", 
+        on_delete=models.SET_NULL, 
+        related_name="chosen_by_partners", 
+        null=True, blank=True
+    )
+    agreed_choice = models.ForeignKey(
+        "OptionItem", 
+        on_delete=models.SET_NULL, 
+        related_name="agreed_in_conflicts", 
+        null=True, blank=True
+    ) # Согласованная версия (копируется при подтверждении)
+    
     is_agreed = models.BooleanField(default=False)
-    updated_at = models.DateTimeField(auto_now=True)
-
+    
     def __str__(self):
         return f"ConflictItem {self.id} for {self.conflict.id}"
 
-    class Meta:
-        unique_together = ("conflict", "item_type")  # Один пункт на тип per conflict
-
-    def confirm_by(self, user, value_to_confirm):
-        if user == self.conflict.creator:
-            self.agreed_value = value_to_confirm  # Подтверждает версию B
-        elif user == self.conflict.partner:
-            self.agreed_value = value_to_confirm  # Подтверждает версию A
+    def update_status(self):
+        if self.creator_choice and self.partner_choice:
+            # Если ответы совпадают - пункт согласован!
+            if self.creator_choice == self.partner_choice:
+                self.is_agreed = True
+                self.agreed_choice = self.creator_choice
+            else:
+                # Ответы есть, но они разные. Пункт не согласован.
+                self.is_agreed = False
+                self.agreed_choice = None
         else:
-            raise ValidationError("Только участники могут подтверждать.")
-        self.is_agreed = True
-        self.save()
-        self.conflict.update_progress()  # Обновить прогресс
+            # Если хотя бы один из пользователей еще не ответил, пункт не может быть согласован.
+            self.is_agreed = False
+            self.agreed_choice = None
+        
+    
+    def unlock(self):
+        if self.conflict.status in ['resolved', 'cancelled', 'abandoned']:
+            raise ValidationError("Нельзя изменить пункт в завершенном или отмененном конфликте.")
+        
+        if not self.is_agreed:
+            # Еще не согласован, подстраховка, просто скип.
+            return
+        
+        self.is_agreed = False
+        self.agreed_choice = None
 
 
 class OptionItem(BaseModel):
-    conflict_item = models.ForeignKey(ConflictItem, on_delete=models.CASCADE, related_name="point")
-    value_option = models.CharField(related_name="option")
-
-    class Meta:
-        unique_together = ("conflict_item", "value_option")
+    conflict_item = models.ForeignKey(ConflictItem, on_delete=models.CASCADE, related_name="options")
+    value = models.TextField()
     
+    is_predefined = models.BooleanField(default=True)
+    
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="custom_options"
+    )
+
     def __str__(self):
-        return f"OptionItem {self.value_option} for {self.conflict_item}"
+        if len(self.value) > 75:
+            return f"{self.value[:72]}..."
+        return self.value
 
 
