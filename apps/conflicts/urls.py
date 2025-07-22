@@ -1,9 +1,10 @@
-from apps.conflicts.views import ConflictCreateView, ConflictDetailView
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import ConflictViewSet
+
+router = DefaultRouter()
+router.register(r'conflicts', ConflictViewSet, basename='conflict')
 
 urlpatterns = [
-    path('create/', ConflictCreateView.as_view(), name='conflict-create'),
-    path('<uuid:pk>/', ConflictDetailView.as_view(), name='conflict-form'),
-    path('<uuid:pk>/cancel/', ConflictDetailView.as_view(), name='conflict-cancel'),
-    path('<uuid:pk>/delete/', ConflictDetailView.as_view(), name='conflict-delete'),
+    path('', include(router.urls)),
 ]

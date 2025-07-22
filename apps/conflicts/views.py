@@ -1,87 +1,55 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from apps.conflicts.models import Conflict, ConflictItem
-from apps.conflicts.serializers import ConflictSerializer, ConflictItemSerializer
-from apps.common.permissions import IsOwnerOnly, IsOwnerOrRead
-from django.core.exceptions import ValidationError
-from django.contrib.auth import get_user_model
-from django.shortcuts import get_object_or_404
-
-User = get_user_model()
-
-# Новое
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db import transaction
 from .models import Conflict
 from .serializers import ConflictListSerializer, ConflictDetailSerializer
+from django.contrib.auth import get_user_model
+from rest_framework import viewsets, mixins
 
-class ConflictViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated] # Позже добавим кастомный IsOwnerOrPartner
-    lookup_field = 'slug' # Используем slug вместо id
+User = get_user_model()
 
+
+class ConflictViewSet(
+    mixins.CreateModelMixin,   # Добавляет только действие .create() (для POST)
+    mixins.RetrieveModelMixin, # GET для одного конфликта
+    mixins.ListModelMixin,     # GET для списка конфликтов
+    viewsets.GenericViewSet    # Базовый класс для ViewSet без каких-либо действий
+):
+    """
+    ViewSet для управления Конфликтами.
+    """
+    serializer_class = ConflictDetailSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'slug'
+    
     def get_queryset(self):
-        # Пользователь видит только свои конфликты. Логика уже в модели!
+        """
+        Этот метод гарантирует, что пользователь увидит только те конфликты,
+        в которых он является создателем или партнером.
+        """
+        # Используем наш готовый менеджер из модели Conflict
         return Conflict.get_for_user(self.request.user).order_by('-created_at')
-
+    
     def get_serializer_class(self):
-        # Разные сериализаторы для списка и для деталей
         if self.action == 'list':
+            # Если запрос на список - используем простой сериализатор
             return ConflictListSerializer
         return ConflictDetailSerializer
+    
 
     def perform_create(self, serializer):
-        # Логика создания будет полностью внутри ConflictDetailSerializer.create()
-        # View только передает `creator` и `partner` (если он есть).
-        partner_id = self.request.data.get("partner_id")
-        partner = User.objects.filter(id=partner_id).first()
-        serializer.save(creator=self.request.user, partner=partner)
+        """
+        Этот метод-хук вызывается внутри .create() из CreateModelMixin
+        сразу после валидации данных, но перед вызовом serializer.save().
 
-    # --- КАСТОМНЫЕ ДЕЙСТВИЯ ВМЕСТО PATCH/POST НА ДЕТАЛЯХ ---
-
-    @action(detail=True, methods=['post'])
-    def join(self, request, slug=None):
-        """Присоединение к конфликту (для партнера, перешедшего по ссылке)"""
-        conflict = self.get_object()
-        try:
-            conflict.add_partner(request.user)
-            # Тут будет отправка WebSocket уведомления
-            return Response({'status': 'Вы успешно присоединились'}, status=status.HTTP_200_OK)
-        except ValidationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['post'])
-    def cancel(self, request, slug=None):
-        """Отмена конфликта одним из участников"""
-        conflict = self.get_object()
-        try:
-            conflict.cancel()
-            # Тут будет отправка WebSocket уведомления
-            # В ответе можно вернуть обновленный сериализованный объект
-            return Response(self.get_serializer(conflict).data, status=status.HTTP_200_OK)
-        except ValidationError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-        
-    # destroy (DELETE) уже встроен в ModelViewSet, но мы можем его переопределить
-    # для нашей логики soft_delete
-    def destroy(self, request, *args, **kwargs):
-        conflict = self.get_object()
-        
-        if conflict.status not in ("resolved", "cancelled", "abandoned"):
-            return Response(
-                {"error": "Можно удалить только после завершения или отмены"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-            
-        try:
-            conflict.soft_delete_for_user(user=request.user)
-        except ValidationError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-            
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        Это идеальное место, чтобы добавить в данные то, что мы не можем
+        получить от клиента, но знаем на сервере, — например, текущего пользователя.
+        """
+        # Мы передаем `creator` в метод .save() сериализатора.
+        # Эти данные попадут в `validated_data` внутри метода .create()
+        # нашего сериализатора, но уже после основной валидации.
+        serializer.save(creator=self.request.user)
     
 
 

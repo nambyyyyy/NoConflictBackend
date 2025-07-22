@@ -189,22 +189,6 @@ class OptionChoice(BaseModel):
         return self.value
     
     
-class OptionItem(BaseModel):
-    conflict_item = models.ForeignKey(ConflictItem, on_delete=models.CASCADE, related_name="options")
-    value = models.TextField()
-    
-    is_predefined = models.BooleanField(default=True)
-    
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True, blank=True,
-        related_name="custom_options"
-    )
 
-    def __str__(self):
-        if len(self.value) > 75:
-            return f"{self.value[:72]}..."
-        return self.value
 
 
