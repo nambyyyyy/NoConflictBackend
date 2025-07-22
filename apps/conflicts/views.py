@@ -14,6 +14,7 @@ class ConflictViewSet(
     mixins.CreateModelMixin,   # Добавляет только действие .create() (для POST)
     mixins.RetrieveModelMixin, # GET для одного конфликта
     mixins.ListModelMixin,     # GET для списка конфликтов
+    mixins.DestroyModelMixin,  # DELETE 
     viewsets.GenericViewSet    # Базовый класс для ViewSet без каких-либо действий
 ):
     """
@@ -91,6 +92,17 @@ class ConflictViewSet(
         
         serializer = self.get_serializer(conflict)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def destroy(self, request, *args, **kwargs):
+        conflict = self.get_object()
+        
+        try:
+            conflict.soft_delete_for_user(user=request.user)
+        except ValidationError as e:
+            # Ловим ошибку, если конфликт уже был удален.
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 

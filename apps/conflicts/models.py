@@ -84,8 +84,12 @@ class Conflict(IsDeletedModel):
     
     def soft_delete_for_user(self, user):
         if user == self.creator:
-            self.deleted_by_creator = True
+            if self.deleted_by_creator:
+                raise ValidationError("Конфликт уже удален")
+            self.deleted_by_creator = True          
         elif self.partner and user == self.partner:
+            if self.deleted_by_partner:
+                raise ValidationError("Конфликт уже удален")
             self.deleted_by_partner = True
         else:
             raise ValidationError("User не участник этого конфликта.")

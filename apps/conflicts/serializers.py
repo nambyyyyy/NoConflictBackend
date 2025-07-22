@@ -84,6 +84,7 @@ class ConflictDetailSerializer(serializers.ModelSerializer):
     # serializers.py -> ConflictDetailSerializer.create()
 
     def create(self, validated_data):
+        # POST на создание конфликта
         from django.db import transaction
 
         items_data_list = validated_data.pop('items_data')
@@ -93,10 +94,10 @@ class ConflictDetailSerializer(serializers.ModelSerializer):
             conflict = Conflict.objects.create(**validated_data)
             
             if partner_id:
+                # Если партнер выбран внутри сервиса
                 try:
                     conflict.partner = User.objects.get(pk=partner_id)
                 except User.DoesNotExist:
-                    # Можно обработать ошибку или просто проигнорировать
                     pass
             
             for item_data in items_data_list:
