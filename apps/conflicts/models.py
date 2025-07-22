@@ -4,8 +4,7 @@ from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 import uuid
 from apps.common.models import IsDeletedModel, BaseModel
-from time import timezone
-
+from django.utils import timezone
 User = get_user_model()  # Получаем вашу модель User (из accounts или auth)
 
 
@@ -15,7 +14,7 @@ class Conflict(IsDeletedModel):
         ("in_progress", "В процессе"),  # Когда оба пользователя присоединены
         ("resolved", "Разрешен"),  # Полностью согласован или manually завершён
         ("cancelled", "Отменен"),  # Отказ от продолжения
-        ("abandoned", "Заброшен")  # Заброшен. Вызывается отдельно скриптом в случае истечения срока действия. 
+        ("abandoned", "Заброшен")  # Заброшен. Вызывается отдельно скриптом в случае истечения срока действия.
     ]
 
     creator = models.ForeignKey(
@@ -66,7 +65,7 @@ class Conflict(IsDeletedModel):
                 "Нельзя завершить без 100% прогресса, если не manually."
             )
 
-    def cancel(self): 
+    def cancel(self):
         # Отклоненный конфликт
         if self.status in ("cancelled", "abandoned", "resolved"):
             raise ValidationError("Конфликт завершён, отменён или заброшен.")
@@ -74,32 +73,32 @@ class Conflict(IsDeletedModel):
         self.save()
 
     def update_progress(self):
-        items = self.items.all()
+        items = self.items.all() # type: ignore
         if items.exists():
             agreed_count = items.filter(is_agreed=True).count()
             self.progress = agreed_count / items.count() * 100
         else:
             self.progress = 0.0
 
-    
+
     def soft_delete_for_user(self, user):
         if user == self.creator:
             if self.deleted_by_creator:
                 raise ValidationError("Конфликт уже удален")
-            self.deleted_by_creator = True          
+            self.deleted_by_creator = True
         elif self.partner and user == self.partner:
             if self.deleted_by_partner:
                 raise ValidationError("Конфликт уже удален")
             self.deleted_by_partner = True
         else:
             raise ValidationError("User не участник этого конфликта.")
-        
+
         # Глобальное удаление, если оба удалили
         if self.deleted_by_creator and self.deleted_by_partner:
-            self.delete() 
-        
+            self.delete()
+
         self.save()
-    
+
     @classmethod
     def get_for_user(cls, user):
         return cls.objects.filter(
@@ -126,34 +125,34 @@ class ConflictItem(BaseModel):
         Conflict, on_delete=models.CASCADE, related_name="items"
     )
     item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
-    
+
     available_options = models.ManyToManyField(
-        "OptionChoice", 
+        "OptionChoice",
         related_name="used_in_items"
     )
 
     # 2. Выбор создателя и партнера теперь ссылается на OptionChoice.
     creator_choice = models.ForeignKey(
-        "OptionChoice", 
-        on_delete=models.SET_NULL, 
-        related_name="chosen_by_creators", 
+        "OptionChoice",
+        on_delete=models.SET_NULL,
+        related_name="chosen_by_creators",
         null=True, blank=True
     )
     partner_choice = models.ForeignKey(
-        "OptionChoice", 
-        on_delete=models.SET_NULL, 
-        related_name="chosen_by_partners", 
+        "OptionChoice",
+        on_delete=models.SET_NULL,
+        related_name="chosen_by_partners",
         null=True, blank=True
     )
     agreed_choice = models.ForeignKey(
-        "OptionChoice", 
-        on_delete=models.SET_NULL, 
-        related_name="agreed_in_conflicts", 
+        "OptionChoice",
+        on_delete=models.SET_NULL,
+        related_name="agreed_in_conflicts",
         null=True, blank=True
     )
-    
+
     is_agreed = models.BooleanField(default=False)
-    
+
     def __str__(self):
         return f"ConflictItem {self.id} for {self.conflict.id}"
 
@@ -171,16 +170,16 @@ class ConflictItem(BaseModel):
             # Если хотя бы один из пользователей еще не ответил, пункт не может быть согласован.
             self.is_agreed = False
             self.agreed_choice = None
-        
-    
+
+
     def unlock(self):
         if self.conflict.status in ['resolved', 'cancelled', 'abandoned']:
             raise ValidationError("Нельзя изменить пункт в завершенном или отмененном конфликте.")
-        
+
         if not self.is_agreed:
             # Еще не согласован, подстраховка, просто скип.
             return
-        
+
         self.is_agreed = False
         self.agreed_choice = None
 
@@ -191,8 +190,3 @@ class OptionChoice(BaseModel):
 
     def __str__(self):
         return self.value
-    
-    
-
-
-
