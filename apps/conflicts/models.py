@@ -68,7 +68,7 @@ class Conflict(IsDeletedModel):
 
     def cancel(self): 
         # Отклоненный конфликт
-        if self.status in ("cancelled", "Заброшен", "resolved"):
+        if self.status in ("cancelled", "abandoned", "resolved"):
             raise ValidationError("Конфликт завершён, отменён или заброшен.")
         self.status = "cancelled"
         self.save()
