@@ -131,6 +131,7 @@ class ConflictViewSet(
     # Кнопка примирения 
     @action(detail=True, methods=['post'], url_path='propose-truce')
     def propose_truce(self, request, slug=None):
+        # Эндпоинт обработки запроса на мир
         conflict, user = self.get_object(), request.user
         
         try:
@@ -155,6 +156,7 @@ class ConflictViewSet(
     
     @action(detail=True, methods=['post'], url_path='accept-truce')
     def accept_truce(self, request, slug=None):
+        # Эндпоинт обработки подтверждения мира
         conflict, user = self.get_object(), request.user
         
         if conflict.truce_status != 'pending' or user == conflict.truce_initiator:
@@ -177,6 +179,7 @@ class ConflictViewSet(
     
     @action(detail=True, methods=['post'], url_path='decline-truce')
     def decline_truce(self, request, slug=None):
+        # Эндпоинт обработки отказа от мира
         conflict, user = self.get_object(), request.user
         
         if conflict.truce_status != 'pending' or user == conflict.truce_initiator:
@@ -184,7 +187,8 @@ class ConflictViewSet(
         
         # 2. Сбрасываем статус предложения
         with transaction.atomic():
-            conflict.truce_status = 'declined'
+            conflict.truce_status = 'none'
+            conflict.truce_initiator = None
             conflict.save()          
             create_event_sync = async_to_sync(ConflictEvent.acreate_event)
             create_event_sync(conflict=conflict, initiator=request.user, event_type='truce_declined')    

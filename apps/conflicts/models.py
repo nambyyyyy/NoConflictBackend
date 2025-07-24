@@ -22,7 +22,6 @@ class Conflict(IsDeletedModel):
         ('none', 'Нет предложения'), 
         ('pending', 'Ожидает ответа'),
         ('accepted', 'Принято'),
-        ('declined', 'Отклонено'),
     ]
 
     creator = models.ForeignKey(
