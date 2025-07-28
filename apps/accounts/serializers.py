@@ -5,9 +5,16 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 User = get_user_model()
 
 class CreateUserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, 
+                                     required=True,
+                                     style={'input_type': 'password'})
+    password2 = serializers.CharField(write_only=True, 
+                                      required=True, 
+                                      style={'input_type': 'password'}, 
+                                      label="Confirm password")
+
+
     email = serializers.EmailField(required=True)
-    password1 = serializers.CharField(write_only=True)
-    password2 = serializers.CharField(write_only=True)
     gender = serializers.ChoiceField(
         choices=User.Gender.choices,
         required=True,
@@ -22,24 +29,19 @@ class CreateUserSerializer(serializers.ModelSerializer):
         fields = [
             "email",
             "username",
-            "first_name",
-            "last_name",
             "gender",
+            "first_name",
+            "last_name", 
             "avatar",
-            "password1",
+            "password",
             "password2",
         ]
 
-    def validate(self, data):
-        if data["password1"] != data["password2"]:
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password2"]:
             raise serializers.ValidationError({"password2": "Пароли не совпадают"})
 
-        if User.objects.filter(email=data["email"]).exists():
-            raise serializers.ValidationError(
-                {"email": "Пользователь с таким email уже существует"}
-            )
-
-        return data
+        return attrs
 
 
     def create(self, validated_data):
@@ -59,3 +61,21 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             token['group'] = 'user'
 
         return token
+    
+
+class RegisterUserSerializer(CreateUserSerializer):
+    # Наследуемся от CreateUserSerializer, чтобы не дублировать код
+    tokens = serializers.SerializerMethodField(read_only=True)
+
+    class Meta(CreateUserSerializer.Meta):
+        # Добавляем поле tokens к полям родителя
+        fields = CreateUserSerializer.Meta.fields + ['tokens']
+
+    def get_tokens(self, user):
+        # Используем MyTokenObtainPairSerializer для генерации токенов
+        # Это гарантирует, что кастомные claims (например, 'group') тоже будут добавлены
+        refresh = MyTokenObtainPairSerializer.get_token(user)
+        return {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
