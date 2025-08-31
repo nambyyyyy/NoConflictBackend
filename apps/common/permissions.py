@@ -1,6 +1,14 @@
 from rest_framework import permissions
 
 
+class IsUnauthenticated(permissions.BasePermission):
+    """
+    Разрешает доступ только неавторизованным пользователям.
+    """
+
+    def has_permission(self, request, view):
+        return not request.user.is_authenticated
+    
 class BaseIsOwnerPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         return request.user.is_authenticated
@@ -9,6 +17,7 @@ class BaseIsOwnerPermission(permissions.BasePermission):
         raise NotImplementedError(
             "Implement has_object_permission in subclass"
         )
+
 
 
 class IsOwnerOrRead(BaseIsOwnerPermission):

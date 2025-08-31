@@ -5,10 +5,12 @@ from apps.profiles.models import Profile
 from apps.profiles.serializers import ProfileSerializer
 from apps.common.permissions import IsOwnerOrRead
 from apps.common.utils import set_profile_and_user
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 class ProfileView(APIView):
     permission_classes = [IsOwnerOrRead]
+    parser_classes = [MultiPartParser, FormParser]
     serializer_class = ProfileSerializer
 
     def get(self, request):

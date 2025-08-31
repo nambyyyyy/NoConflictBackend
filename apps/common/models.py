@@ -1,14 +1,12 @@
 import uuid
 from django.db import models
 from django.utils import timezone
-from apps.common.managers import IsDeletedManager, GetOrNoneManager
+
 
 class BaseModel(models.Model):
     id = models.UUIDField(default=uuid.uuid4, primary_key=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    objects = GetOrNoneManager()
 
     class Meta:
         abstract = True
@@ -20,8 +18,6 @@ class IsDeletedModel(BaseModel):
 
     class Meta:
         abstract = True
-
-    objects = IsDeletedManager()
 
     def delete(self, *args, **kwargs):
         # Мягкое удаление is_deleted=True

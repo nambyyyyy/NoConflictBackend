@@ -9,9 +9,4 @@ User = get_user_model()
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(
-            user=instance,
-            first_name=instance.first_name,
-            last_name=instance.last_name,
-            avatar=instance.avatar,
-        )
+        Profile.objects.create(user=instance)

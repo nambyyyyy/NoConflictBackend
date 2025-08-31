@@ -2,13 +2,8 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.common.permissions import IsOwnerOrPartner
-<<<<<<< HEAD
 from apps.conflicts.models import Conflict, ConflictEvent
 from apps.conflicts.serializers import ConflictListSerializer, ConflictDetailSerializer
-=======
-from .models import Conflict, ConflictEvent
-from .serializers import ConflictListSerializer, ConflictDetailSerializer
->>>>>>> ef3b54f1f415335853a547d2bc42f824ce55242c
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, mixins
 from rest_framework.serializers import Serializer

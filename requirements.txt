@@ -12,3 +12,5 @@ django-cors-headers==4.3.1  # Явное указание пакета
 psycopg2-binary==2.9.9  # Стабильная версия
 websockets==12.0
 Pillow==10.3.0
+dotenv
+celery
