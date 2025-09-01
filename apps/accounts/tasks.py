@@ -1,30 +1,39 @@
 from celery import shared_task
 from no_conflict_project import settings
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from urllib.parse import urljoin
 from django.core.mail import send_mail
+from uuid import UUID
+from infrastructure.persistence.user_repository import DjangoUserRepository
 
 User = get_user_model()
 
 
 @shared_task(
     bind=True,
-    autoretry_for=(Exception,),  # ретраи при временных сбоях SMTP
-    retry_backoff=30,  # 30с, потом экспоненциально
+    autoretry_for=(Exception,),
+    retry_backoff=30,
     retry_jitter=True,
     retry_kwargs={"max_retries": 5},
 )
-def send_verification_email(self, user_id: int, base_url: str | None = None) -> None:
-    user = User.objects.filter(pk=user_id).first()
-    if not user or user.email_confirmed:
+def send_verification_email(
+    self,
+    user_id: str,  # ← Теперь str (UUID как строка)
+    token: str,  # ← Принимаем готовый токен
+    base_url: str | None = None,
+) -> None:
+    # Получаем пользователя через репозиторий
+    user_repo = DjangoUserRepository()
+    user_entity = user_repo.get_by_id(UUID(user_id))
+
+    if not user_entity or user_entity.email_confirmed:
         return
 
-    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-    token = default_token_generator.make_token(user)
+    # Используем переданный токен, не генерируем новый
+    uidb64 = urlsafe_base64_encode(force_bytes(str(user_entity.id)))
 
     path = reverse("verify-email", kwargs={"uidb64": uidb64, "token": token})
     base = base_url or getattr(settings, "SITE_URL", "http://localhost:8000")
@@ -41,6 +50,6 @@ def send_verification_email(self, user_id: int, base_url: str | None = None) -> 
         subject=subject,
         message=body,
         from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=[user.email],
+        recipient_list=[user_entity.email],
         fail_silently=False,
     )

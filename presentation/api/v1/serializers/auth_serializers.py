@@ -33,9 +33,17 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 "Только буквы, цифры, точка, дефис и подчёркивание"
             )
+        if re.match(r"^\d+$", username):
+            raise serializers.ValidationError(
+                "Нельзя использовать только цифры в имени"
+            )
         return username
 
 
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
+    login = serializers.CharField() 
     password = serializers.CharField(style={"input_type": "password"})
+    
+    def validate_login(self, value):
+        """Нормализуем логин"""
+        return value.strip().lower()  # убираем пробелы, в нижний регистр

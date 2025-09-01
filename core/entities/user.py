@@ -11,4 +11,5 @@ class User:
     password_hash: str
     email_confirmed: bool = False
     is_active: bool = True
+    is_deleted: bool = False
     created_at: Optional[datetime] = None

@@ -4,7 +4,8 @@ from apps.accounts.models import UserModel
 from uuid import UUID
 from typing import Optional
 
-class DjangoUserRepository(UserRepository):  # ← Ясно, что это Django-реализация
+
+class DjangoUserRepository(UserRepository):
     """Реализация UserRepository через Django ORM"""
     
     def get_by_email(self, email: str) -> Optional[User]:

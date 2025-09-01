@@ -1,13 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
 from apps.common.models import IsDeletedModel
-from apps.accounts.managers import CustomUserManager
 from django.db.models.functions import Lower
 
 
 class UserModel(AbstractBaseUser, IsDeletedModel, PermissionsMixin):
-    objects = CustomUserManager()
-
     username = models.CharField("Login", max_length=30, unique=True)
     email = models.EmailField("Email address", unique=True)
     email_confirmed = models.BooleanField("Email подтвержден", default=False)
