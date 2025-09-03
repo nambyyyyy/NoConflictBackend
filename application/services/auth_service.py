@@ -8,7 +8,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
-from typing import Callable
+from typing import Callable, Optional
 from uuid import UUID
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
@@ -52,14 +52,20 @@ class AuthService:
         except (TypeError, ValueError, OverflowError, UnicodeDecodeError):
             raise ValueError("Invalid verification link")
 
-        user_entity: User | None = self.user_repo.get_by_id(user_id=user_id)
+        user_entity: Optional[User] = self.user_repo.get_by_id(user_id=user_id)
+        if user_entity is None:
+            raise ValueError("Пользователь не найден")
+        
         self._validate_verify(user_entity)
 
         if not self.token_repo.check_token(user_entity, token):
             raise ValueError("Закончился срок действия токена")
 
         user_entity.email_confirmed = True
-        updated_entity: User = self.user_repo.update(user_entity)
+        updated_entity: Optional[User] = self.user_repo.update(user_entity)
+        if updated_entity is None:
+            raise ValueError("Пользователь не найден")
+        
         return self._to_dto(user_entity=updated_entity)
 
     def login(self, login: str, password: str) -> dict[str, str]:
@@ -99,7 +105,7 @@ class AuthService:
         self._chek_delete_or_block(user_entity)
 
     def _validate_login(self, user_entity: User | None, password: str):
-        if not user_entity or check_password(password, user_entity.password_hash):
+        if not user_entity or not check_password(password, user_entity.password_hash):
             raise ValueError("Неверный логин или пароль")
 
         if not user_entity.email_confirmed:

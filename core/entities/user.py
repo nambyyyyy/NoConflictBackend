@@ -13,3 +13,4 @@ class User:
     is_active: bool = True
     is_deleted: bool = False
     created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None

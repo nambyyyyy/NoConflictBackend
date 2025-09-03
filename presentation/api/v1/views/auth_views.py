@@ -5,7 +5,8 @@ from presentation.api.v1.serializers import RegisterSerializer, LoginSerializer
 from apps.common.permissions import IsUnauthenticated
 from presentation.dependencies.service_factories import get_auth_service
 from apps.accounts.tasks import send_verification_email
-from application.services import AuthService
+from application.services.auth_service import AuthService
+from application.dtos.user_dto import UserDTO
 
 
 class RegisterView(APIView):
@@ -22,7 +23,7 @@ class RegisterView(APIView):
             base_url = request.build_absolute_uri("/")[:-1]
 
             # 3. Вызываем use case
-            user_dto = auth_service.register_user(
+            user_dto: UserDTO = auth_service.register_user(
                 email=serializer.validated_data["email"],  # type: ignore
                 username=serializer.validated_data["username"],  # type: ignore
                 password=serializer.validated_data["password"],  # type: ignore
@@ -44,7 +45,7 @@ class VerifyEmailView(APIView):
     def get(self, request, uidb64, token):
         try:
             auth_service: AuthService = get_auth_service()
-            user_dto = auth_service.verify_email(uidb64=uidb64, token=token)
+            user_dto: UserDTO = auth_service.verify_email(uidb64=uidb64, token=token)
 
             return Response(user_dto.__dict__, status=200)
 

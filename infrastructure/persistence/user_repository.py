@@ -29,7 +29,7 @@ class DjangoUserRepository(UserRepository):
         except UserModel.DoesNotExist:
             return None
     
-    def save(self, user: User) -> User:
+    def save(self, user: User) -> Optional[User]:
         # Создаем или обновляем
         django_user, created = UserModel.objects.get_or_create(
             id=user.id,
@@ -48,7 +48,7 @@ class DjangoUserRepository(UserRepository):
         return self._to_entity(django_user)
     
     
-    def update(self, user: User) -> User:
+    def update(self, user: User) -> Optional[User]:
         """Обновление существующего пользователя"""
         try:
             django_user = UserModel.objects.get(id=user.id)
@@ -61,15 +61,16 @@ class DjangoUserRepository(UserRepository):
             django_user.save()
             return self._to_entity(django_user)
         except UserModel.DoesNotExist:
-            raise ValueError(f"User with id {user.id} not found")
+            return None
     
-    def delete(self, user_id: UUID) -> None:
+    def delete(self, user_id: UUID) -> bool:
         """Удаление пользователя"""
         try:
             django_user = UserModel.objects.get(id=user_id)
             django_user.delete() # Мягкое удаление
+            return True
         except UserModel.DoesNotExist:
-            raise ValueError(f"User with id {user_id} not found")
+            return False
         
         
     def _to_entity(self, django_user: UserModel) -> User:
