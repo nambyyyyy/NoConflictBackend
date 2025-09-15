@@ -4,28 +4,12 @@ from uuid import uuid4
 def test_register_user(
     auth_service, mock_token_repo, mock_user_repo, mock_send_email, fake_user_class
 ):
-    """
-    Unit-тест для AuthService.register_user() — без БД, без HTTP, без Celery.
-
-    Проверяет:
-    - Пароль хешируется перед сохранением
-    - Репозиторий получает хешированный пароль
-    - UserDTO формируется корректно
-    - Задача отправки email вызывается с правильными параметрами
-
-    Использует моки:
-    - UserRepository (вместо реальной БД)
-    - send_email_func (вместо Celery)
-
-    Важно: Это unit-тест — он работает за <0.01 секунды.
-    """
 
     email = "test@example.com"
     username = "testuser"
     password = "StrongPass123!"
     base_url = "http://localhost"
 
-    # Мокаем возвращаемое значение токена
     fake_token = "abc123xyz-token-for-test"
     mock_token_repo.make_token.return_value = fake_token
 
@@ -41,11 +25,10 @@ def test_register_user(
     )
     user_entity.set_password(password)
 
-    # Проверяем, что пароль изменился
     assert user_entity.password_hash != "plain_password_placeholder"
     assert user_entity.password_hash.startswith(
         "hashed_"
-    )  # убедились, что имитация сработала
+    ) 
 
     mock_user_repo.save.return_value = user_entity
 
