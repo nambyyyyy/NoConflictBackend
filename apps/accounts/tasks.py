@@ -21,8 +21,8 @@ User = get_user_model()
 )
 def send_verification_email(
     self,
-    user_id: str,  # ← Теперь str (UUID как строка)
-    token: str,  # ← Принимаем готовый токен
+    user_id: str, 
+    token: str,
     base_url: str | None = None,
 ) -> None:
     # Получаем пользователя через репозиторий
@@ -32,7 +32,7 @@ def send_verification_email(
     if not user_entity or user_entity.email_confirmed:
         return
 
-    # Используем переданный токен, не генерируем новый
+    # Используем переданный токен
     uidb64 = urlsafe_base64_encode(force_bytes(str(user_entity.id)))
 
     path = reverse("verify-email", kwargs={"uidb64": uidb64, "token": token})
