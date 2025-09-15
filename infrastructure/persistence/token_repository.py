@@ -1,4 +1,4 @@
-from core.repositories.token_repository import TokenRepository, JWTTRepository
+from core.interfaces.token_repository import TokenRepository, JWTTRepository
 from apps.accounts.models import UserModel
 from django.contrib.auth.tokens import default_token_generator
 from core.entities.user import User

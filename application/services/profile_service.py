@@ -1,10 +1,9 @@
-from core.repositories.profile_repository import ProfileRepository
-from infrastructure.processors.avatar_processor import AvatarProcessor
+from core.interfaces.profile_repository import ProfileRepository
+from backend.core.interfaces.avatar_processor import AvatarProcessor
 from uuid import UUID
 from typing import Optional
 from core.entities.profile import Profile
-from django.core.files.uploadedfile import UploadedFile
-from application.dtos.profiel_dto import ProfileDTO
+from application.dtos.profile_dto import ProfileDTO 
 
 
 class ProfileService:
@@ -22,7 +21,7 @@ class ProfileService:
         self,
         user_id: UUID,
         profile_data: dict,
-        avatar_file: Optional[UploadedFile] = None,
+        avatar_file: Optional[object] = None,
     ) -> ProfileDTO:
 
         profile_entity: Optional[Profile] = self.profile_repo.get_by_user_id(user_id)

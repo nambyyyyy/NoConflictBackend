@@ -1,4 +1,4 @@
-from core.repositories.profile_repository import ProfileRepository
+from core.interfaces.profile_repository import ProfileRepository
 from apps.profiles.models import ProfileModel
 from core.entities.profile import Profile
 from typing import Optional

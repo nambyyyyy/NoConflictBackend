@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from presentation.dependencies.service_factories import get_profile_service
 from rest_framework.parsers import MultiPartParser, JSONParser
 from application.services.profile_service import ProfileService
-from application.dtos.profiel_dto import ProfileDTO
+from backend.application.dtos.profile_dto import ProfileDTO
 from rest_framework.permissions import IsAuthenticated
 
 

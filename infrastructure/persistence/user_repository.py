@@ -1,4 +1,4 @@
-from core.repositories.user_repository import UserRepository
+from core.interfaces.user_repository import UserRepository
 from core.entities.user import User
 from apps.accounts.models import UserModel
 from uuid import UUID
