@@ -139,4 +139,5 @@ class AuthService:
             username=user_entity.username,
             email_confirmed=user_entity.email_confirmed,
         )
-        #
+        
+        
