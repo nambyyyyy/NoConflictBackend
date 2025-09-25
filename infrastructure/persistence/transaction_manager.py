@@ -1,5 +1,5 @@
 from django.db import transaction
-from core.interfaces.transaction_repository import TransactionManager
+from backend.core.interfaces.transaction_interface import TransactionManager
 from typing import Callable
 
 

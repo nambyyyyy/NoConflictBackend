@@ -1,4 +1,4 @@
-from core.interfaces.profile_repository import ProfileRepository
+from backend.core.interfaces.profile_interface import ProfileRepository
 from backend.core.interfaces.avatar_processor import AvatarProcessor
 from uuid import UUID
 from typing import Optional

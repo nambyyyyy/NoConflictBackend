@@ -10,7 +10,7 @@ class TokenRepository(ABC):
         pass
 
 
-class JWTTRepository(ABC):
+class JWTRepository(ABC):
     @abstractmethod
     def create_access_token(self, user) -> str:
         pass

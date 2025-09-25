@@ -44,7 +44,6 @@ def test_register_user_success(api_client, mock_send_email):
     # Выполняем POST-запрос к эндпоинту
     response = api_client.post(url, data, format="json")
 
-    # Проверяем результаты
 
     # 1. Успешный статус ответа
     assert (
@@ -186,6 +185,6 @@ def test_register_user_calls_auth_service(
         email="test@example.com",
         username="testuser",
         password="StrongPass123!",
-        send_email_func=mock_send_email,  # ← важно: мок передаётся как есть
-        base_url="http://testserver",  # build_absolute_uri вернёт это в тестах
+        send_email_func=mock_send_email, 
+        base_url="http://testserver",
     )

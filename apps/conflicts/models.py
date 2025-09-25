@@ -8,7 +8,7 @@ from django.utils import timezone
 User = get_user_model()  # Получаем вашу модель User (из accounts или auth)
 
 
-class Conflict(IsDeletedModel):
+class ConflictModel(IsDeletedModel):
     STATUS_CHOICES = [
         ("pending", "Ожидает партнера"),  # Когда создан без партнёра
         ("in_progress", "В процессе"),  # Когда оба пользователя присоединены
@@ -73,7 +73,7 @@ class Conflict(IsDeletedModel):
             raise ValidationError("Нельзя быть партнером самому себе.")
         self.partner = user
         self.status = "in_progress"
-        # Здесь позже можно добавить уведомление (через notifications app), но пока игнорируем
+        # Здесь позже добавить уведомление (через notifications app), но пока игнорируем
 
     def resolve(self, manual=False):
         # Логика завершения: manual=True позволяет завершить с progress < 100
@@ -167,7 +167,7 @@ class ConflictItem(BaseModel):
     ]
 
     conflict = models.ForeignKey(
-        Conflict, on_delete=models.CASCADE, related_name="items"
+        ConflictModel, on_delete=models.CASCADE, related_name="items"
     )
     item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
 
@@ -249,7 +249,7 @@ class ConflictEvent(BaseModel):
     ]
 
     conflict = models.ForeignKey(
-        Conflict, 
+        ConflictModel, 
         on_delete=models.CASCADE, 
         related_name="events"
     )

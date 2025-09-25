@@ -1,4 +1,4 @@
-from core.interfaces.token_repository import TokenRepository, JWTTRepository
+from backend.core.interfaces.token_interface import TokenRepository, JWTRepository
 from apps.accounts.models import UserModel
 from django.contrib.auth.tokens import default_token_generator
 from core.entities.user import User
@@ -23,7 +23,7 @@ class DjangoTokenRepository(TokenRepository):
             raise ValueError("User not found in database")
 
 
-class DjangoJWTRepository(JWTTRepository):
+class DjangoJWTRepository(JWTRepository):
     def __init__(self, secret_key: str, algorithm: str = "HS256"):
         self.secret_key = secret_key
         self.algorithm = algorithm

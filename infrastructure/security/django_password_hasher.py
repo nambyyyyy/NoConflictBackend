@@ -1,5 +1,5 @@
 from django.contrib.auth.hashers import make_password, check_password
-from core.interfaces.password_repository import PasswordHasher
+from backend.core.interfaces.password_interface import PasswordHasher
 
 
 class DjangoPasswordHasher(PasswordHasher):

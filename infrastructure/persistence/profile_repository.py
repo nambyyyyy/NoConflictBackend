@@ -1,7 +1,7 @@
-from core.interfaces.profile_repository import ProfileRepository
+from backend.core.interfaces.profile_interface import ProfileRepository
 from apps.profiles.models import ProfileModel
 from core.entities.profile import Profile
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 from datetime import datetime
 
@@ -11,16 +11,16 @@ class DjangoProfielRepository(ProfileRepository):
     def get_by_id(self, profile_id: UUID) -> Optional[Profile]:
         """Найти профиль по ID"""
         try:
-            profile = ProfileModel.objects.get(id=profile_id)
-            return self._to_entity(django_profile=profile)
+            django_profile = ProfileModel.objects.get(id=profile_id)
+            return self._to_entity(django_profile)
         except ProfileModel.DoesNotExist:
             return None
 
     def get_by_user_id(self, user_id: UUID) -> Optional[Profile]:
         """Найти профиль по ID пользователя (основной метод!)"""
         try:
-            profile = ProfileModel.objects.get(user_id=user_id)
-            return self._to_entity(django_profile=profile)
+            django_profile = ProfileModel.objects.get(user_id=user_id)
+            return self._to_entity(django_profile)
         except ProfileModel.DoesNotExist:
             return None
 
@@ -31,7 +31,7 @@ class DjangoProfielRepository(ProfileRepository):
         except ProfileModel.DoesNotExist:
             return None
 
-        field_values: dict[str, str | datetime] = profile.get_django_field_values()
+        field_values: dict[str, Any] = profile.get_django_field_values()
 
         for field_name, value in field_values.items():
             setattr(django_profile, field_name, value)

@@ -1,11 +1,11 @@
 import pytest
 from unittest.mock import Mock
 from application.services.auth_service import AuthService
-from core.interfaces.user_repository import UserRepository
-from core.interfaces.token_repository import TokenRepository, JWTTRepository
-from core.interfaces.password_repository import PasswordHasher, PasswordValidator
-from core.interfaces.transaction_repository import TransactionManager
-from core.interfaces.link_repository import LinkDecoder
+from backend.core.interfaces.user_interface import UserRepository
+from backend.core.interfaces.token_interface import TokenRepository, JWTTRepository
+from backend.core.interfaces.password_interface import PasswordHasher, PasswordValidator
+from backend.core.interfaces.transaction_interface import TransactionManager
+from backend.core.interfaces.link_interface import LinkDecoder
 from uuid import UUID
 from typing import Optional
 from datetime import datetime

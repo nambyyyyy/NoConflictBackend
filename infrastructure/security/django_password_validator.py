@@ -1,4 +1,4 @@
-from core.interfaces.password_repository import PasswordValidator
+from backend.core.interfaces.password_interface import PasswordValidator
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 
