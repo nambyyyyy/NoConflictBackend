@@ -11,11 +11,6 @@ from typing import Optional
 from datetime import datetime
 
 
-@pytest.fixture
-def mock_send_email():
-    """Мок для celery задачи send_verification_email.delay"""
-    return Mock()
-
 
 @pytest.fixture
 def auth_service():
