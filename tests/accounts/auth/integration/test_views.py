@@ -70,23 +70,21 @@ def test_register_user_success(api_client, mock_send_email):
     )
 
 
-# @pytest.mark.django_db
-# def test_register_user_password_mismatch(api_client):
-#     # Given
-#     url = reverse('register')
-#     data = {
-#         "email": "test@example.com",
-#         "username": "testuser",
-#         "password": "StrongPass123!",
-#         "password2": "WrongPassword"
-#     }
+@pytest.mark.django_db
+def test_register_user_password_mismatch(api_client):
+    from django.urls import reverse
+    url = reverse('register')
+    data = {
+        "email": "test@example.com",
+        "username": "testuser",
+        "password": "StrongPass123!",
+        "password2": "WrongPassword"
+    }
 
-#     # When
-#     response = api_client.post(url, data, format='json')
+    response = api_client.post(url, data, format='json')
 
-#     # Then
-#     assert response.status_code == 400
-#     assert "Пароли не совпадают" in str(response.json())
+    assert response.status_code == 400
+    assert "Пароли не совпадают" in str(response.json())
 
 
 # @pytest.mark.django_db
