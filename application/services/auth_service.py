@@ -1,5 +1,5 @@
 from backend.core.interfaces.user_interface import UserRepository
-from backend.core.interfaces.token_interface import TokenRepository, JWTTRepository
+from backend.core.interfaces.token_interface import TokenRepository, JWTRepository
 from backend.core.interfaces.password_interface import PasswordHasher, PasswordValidator
 from backend.core.interfaces.transaction_interface import TransactionManager
 from backend.core.interfaces.link_interface import LinkDecoder
@@ -17,7 +17,7 @@ class AuthService:
         self,
         user_repository: UserRepository,
         token_repository: TokenRepository,
-        jwt_repository: JWTTRepository,
+        jwt_repository: JWTRepository,
         password_hasher: PasswordHasher,
         password_validator: PasswordValidator,
         transaction_manager: TransactionManager,

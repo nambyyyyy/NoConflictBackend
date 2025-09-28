@@ -2,7 +2,7 @@ from backend.core.entities.conflict import Conflict
 from core.interfaces.conflict_interface import ConflictRepository
 from apps.conflicts.models import ConflictModel
 from apps.accounts.models import UserModel
-from typing import Optional, Any
+from typing import Optional
 
 
 class DjangoConflictRepository(ConflictRepository):
