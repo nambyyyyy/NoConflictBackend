@@ -176,7 +176,7 @@ class ConflictItem(BaseModel):
         related_name="used_in_items"
     )
 
-    # 2. Выбор создателя и партнера теперь ссылается на OptionChoice.
+    # 2. Выбор создателя и партнера ссылается на OptionChoice.
     creator_choice = models.ForeignKey(
         "OptionChoice",
         on_delete=models.SET_NULL,

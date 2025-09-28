@@ -12,21 +12,24 @@ class ConflictError(Exception):
 @dataclass
 class Conflict:
     id: Optional[UUID] = None
-    creator_id: Optional[int] = None    # ссылки на User внутри ядра храним как айди
+    creator_id: Optional[int] = None  # ссылки на User внутри ядра храним как айди
     partner_id: Optional[int] = None
-    
+
     title: str = ""
-    status: str = "pending"   # pending / in_progress / resolved / cancelled / abandoned
+    status: str = "pending"  # pending / in_progress / resolved / cancelled / abandoned
     slug: str = field(default_factory=lambda: str(uuid4()))
-    
+
     progress: float = 0.0
     resolved_at: Optional[datetime] = None
-    
+
     deleted_by_creator: bool = False
     deleted_by_partner: bool = False
-    
+
     truce_status: str = "none"  # none / pending / accepted
     truce_initiator_id: Optional[int] = None
+
+    items: list["ConflictItem"] = field(default_factory=list)
+    events: list["ConflictEvent"] = field(default_factory=list)
 
     def add_partner(self, user_id: int):
         if self.partner_id is not None:
@@ -41,12 +44,23 @@ class Conflict:
             self.status = "resolved"
             self.resolved_at = datetime.now()
         else:
-            raise ConflictError("Нельзя завершить без 100% прогресса, если не manually.")
+            raise ConflictError(
+                "Нельзя завершить без 100% прогресса, если не manually."
+            )
 
     def cancel(self):
         if self.status in ("cancelled", "abandoned", "resolved"):
             raise ConflictError("Конфликт завершён, отменён или заброшен.")
         self.status = "cancelled"
+
+    def unlock_item(self, item_id: UUID):
+        if self.status in ("resolved", "cancelled", "abandoned"):
+            raise ConflictError(
+                "Нельзя изменять пункты в завершенном или отмененном конфликте."
+            )
+
+        item = next(item for item in self.items if item.id == item_id)
+        item.unlock()
 
     def soft_delete_for_user(self, user_id: int):
         if user_id == self.creator_id:
@@ -77,7 +91,7 @@ class Conflict:
             raise ConflictError("Предложение уже отправлено.")
         if not all_items_answered:
             raise ConflictError("Не все пункты анкеты заполнены обоими участниками.")
-    
+
     def get_django_field_values(self) -> dict:
         """Получить значения полей для Django ORM"""
         return {
