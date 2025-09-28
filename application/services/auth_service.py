@@ -48,7 +48,7 @@ class AuthService:
         self.transaction_manager.on_commit(
             lambda: send_email_func(str(user_entity.id), token, base_url=base_url)
         )
-        return self._to_dto(user_entity=saved_entity)
+        return self._to_dto(saved_entity)
 
     def verify_email(self, uidb64: str, token: str) -> UserDTO:
         try:
@@ -98,7 +98,7 @@ class AuthService:
 
         self.password_validator.validate(password)
 
-    def _validate_verify(self, user_entity: User | None) -> None:
+    def _validate_verify(self, user_entity: Optional[User]) -> None:
         if not user_entity:
             raise ValueError("The user with this uuid was not found")
         if user_entity.email_confirmed:

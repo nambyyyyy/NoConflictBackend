@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.common.permissions import IsOwnerOrPartner
-from apps.conflicts.models import Conflict, ConflictEvent
+from apps.conflicts.models import ConflictModel, ConflictEvent
 from apps.conflicts.serializers import ConflictListSerializer, ConflictDetailSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, mixins
@@ -29,13 +29,13 @@ class ConflictViewSet(
     permission_classes = [IsOwnerOrPartner]
     lookup_field = 'slug'
 
-    def get_queryset(self) -> QuerySet[Conflict]: # type: ignore
+    def get_queryset(self) -> QuerySet[ConflictModel]: # type: ignore
         """
         Этот метод гарантирует, что пользователь увидит только те конфликты,
         в которых он является создателем или партнером.
         """
         # Используем наш готовый менеджер из модели Conflict
-        return Conflict.get_for_user(self.request.user).order_by('-created_at')
+        return ConflictModel.get_for_user(self.request.user).order_by('-created_at')
 
     def get_serializer_class(self) -> Type[Serializer]: # type: ignore
         if self.action == 'list':
@@ -58,7 +58,6 @@ class ConflictViewSet(
         # Тут логика уведомления для существующего партнера
             pass
 
-    # Шаг 5: Отправка финального ответа.
         headers = self.get_success_headers(serializer.data)
         return Response(response_data, status=status.HTTP_201_CREATED, headers=headers)    
 

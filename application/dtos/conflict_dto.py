@@ -27,7 +27,7 @@ class ConflictEventDTO:
     id: UUID
     event_type: str
     created_at: datetime
-    initiator_id: Optional[int]
+    initiator_id: Optional[UUID]
     initiator_name: Optional[str] = None
     initiator_avatar_url: Optional[str] = None
     details: Optional[dict[str, Any]] = None

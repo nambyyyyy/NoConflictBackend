@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from core.entities.conflict import Conflict
+from uuid import UUID
 
 class ConflictRepository(ABC):
     
@@ -14,4 +15,10 @@ class ConflictRepository(ABC):
         pass
 
 
+class OptionChoicRepository(ABC):
+    
+    @abstractmethod
+    def get_many(self, option_ids: list[UUID]) -> list[object]:
+        """Вернуть список объектов опций"""
+        pass
     

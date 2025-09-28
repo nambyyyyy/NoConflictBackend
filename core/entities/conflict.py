@@ -11,8 +11,8 @@ class ConflictError(Exception):
 
 @dataclass
 class Conflict:
-    id: Optional[UUID] = None
-    creator_id: Optional[int] = None  # ссылки на User внутри ядра храним как айди
+    id: UUID 
+    creator_id: int  # ссылки на User внутри ядра храним как айди
     partner_id: Optional[int] = None
 
     title: str = ""
