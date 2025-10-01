@@ -25,7 +25,13 @@ class ConflictService:
     ):
         self.conflict_repo = conflict_repository
         self.option_choice_repo = option_choice_repository
-
+    
+    def get_form_conflict(self, creator_id: UUID) -> ConflictDetailDTO:
+        conflict_entity: Conflict = Conflict(
+            creator_id=creator_id, 
+        )
+        return self._to_dto_detail(conflict_entity) 
+        
     def create_conflict(
         self, creator_id: UUID, validated_data: dict[str, Any]
     ) -> ConflictDetailDTO:
