@@ -44,15 +44,15 @@ class ConflictShortDTO:
 @dataclass
 class ConflictDetailDTO:
     id: UUID
-    creator_id: int
-    partner_id: Optional[int]
+    creator_id: UUID
+    partner_id: Optional[UUID]
     title: str
     status: str
     slug: str
     progress: float
     resolved_at: Optional[datetime]
     truce_status: str
-    truce_initiator_id: Optional[int]
+    truce_initiator_id: Optional[UUID]
     items: list["ConflictItemDTO"]
     events: list["ConflictEventDTO"]
 

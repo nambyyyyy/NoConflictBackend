@@ -1,15 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
 from presentation.api.v1.serializers.conflict_serializers import (
     CreateConflictSerializer,
 )
 from presentation.dependencies.service_factories import get_conflict_service
 from application.dtos.conflict_dto import ConflictDetailDTO
+from application.services.conflict_service import ConflictService
 from typing import Any, Dict
+from rest_framework.permissions import IsAuthenticated
 
 
 class CreateConflictView(APIView):
+    permission_classes = [IsAuthenticated]
+    
     def post(self, request):
         serializer = CreateConflictSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -18,7 +21,7 @@ class CreateConflictView(APIView):
         data: Dict[str, Any] = serializer.validated_data  # type: ignore
 
         # Получаем сервис (Application Layer)
-        conflict_service = get_conflict_service()
+        conflict_service: ConflictService = get_conflict_service()
 
         try:
             conflict_dto: ConflictDetailDTO = conflict_service.create_conflict(

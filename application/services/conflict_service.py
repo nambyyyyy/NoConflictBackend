@@ -9,13 +9,12 @@ from application.dtos.conflict_dto import (
     ConflictShortDTO,
     OptionChoiceDTO,
 )
-from core.entities.conflict import Conflict
+from core.entities.conflict import Conflict, ConflictError
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
 from core.entities.option_choice import OptionChoice
-from typing import Any
-
-
+from typing import Any, Optional
+from uuid import uuid4, UUID
 
 
 class ConflictService:
@@ -28,11 +27,35 @@ class ConflictService:
         self.option_choice_repo = option_choice_repository
 
     def create_conflict(
-        self, creator_id: int, validated_data: dict[str, Any]
+        self, creator_id: UUID, validated_data: dict[str, Any]
     ) -> ConflictDetailDTO:
-        conflict_entity: Conflict = Conflict(creator_id=creator_id, **validated_data)
+        creator_id, partner_id, title = self._validate_conflict(
+            creator_id, validated_data.get("partner_id"), validated_data.get("title")
+        )
+        conflict_entity: Conflict = Conflict(
+            creator_id=creator_id, partner_id=partner_id, title=title
+        )
         saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
         return self._to_dto_detail(saved_conflict)
+
+    def _validate_conflict(
+        self,
+        creator_id: UUID,
+        partner_id: Optional[UUID] = None,
+        title: Optional[str] = None,
+    ) -> tuple[UUID, Optional[UUID], str]:
+        if partner_id is not None:
+            if creator_id == partner_id:
+                raise ConflictError("Нельзя назначить партнером самого себя")
+
+        if title is None:
+            title = self._generate_title()
+
+        return creator_id, partner_id, title
+
+    def _generate_title(self) -> str:
+        short_id = str(uuid4()).replace("-", "")[:8]
+        return f"Conflict - {short_id.upper()}"
 
     def _to_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
         return ConflictDetailDTO(

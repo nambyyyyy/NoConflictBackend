@@ -11,10 +11,10 @@ class ConflictError(Exception):
 
 @dataclass
 class Conflict:
-    id: UUID 
-    creator_id: int  # ссылки на User внутри ядра храним как айди
-    partner_id: Optional[int] = None
-
+    creator_id: UUID
+    partner_id: Optional[UUID] = None
+    
+    id: UUID = field(default_factory=uuid4)
     title: str = ""
     status: str = "pending"  # pending / in_progress / resolved / cancelled / abandoned
     slug: str = field(default_factory=lambda: str(uuid4()))
@@ -26,7 +26,7 @@ class Conflict:
     deleted_by_partner: bool = False
 
     truce_status: str = "none"  # none / pending / accepted
-    truce_initiator_id: Optional[int] = None
+    truce_initiator_id: Optional[UUID] = None
 
     items: list["ConflictItem"] = field(default_factory=list)
     events: list["ConflictEvent"] = field(default_factory=list)
