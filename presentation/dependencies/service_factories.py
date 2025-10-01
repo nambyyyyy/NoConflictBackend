@@ -5,11 +5,13 @@ from infrastructure.persistence.token_repository import (
 )
 from infrastructure.persistence.profile_repository import DjangoProfielRepository
 from infrastructure.persistence.transaction_manager import DjangoTransactionManager
+from infrastructure.persistence.conflict_repository import DjangoConflictRepository, DjangoOptionChoicRepository
 from infrastructure.security.django_password_hasher import DjangoPasswordHasher
 from infrastructure.security.django_password_validator import DjangoPasswordValidator
 from infrastructure.security.django_link_decoder import DjangoLinkDecoder
 from application.services.auth_service import AuthService
 from application.services.profile_service import ProfileService
+from application.services.conflict_service import ConflictService
 from no_conflict_project.settings import SECRET_KEY, MEDIA_URL
 from infrastructure.processors.avatar.avatar_processor import DjangoAvatarProcessor
 from infrastructure.processors.avatar.avatar_validator import AvatarValidator
@@ -47,4 +49,12 @@ def get_profile_service() -> ProfileService:
         profile_repository=DjangoProfielRepository(),
         avatar_processor=avatar_processor,
         media_base_url=MEDIA_URL,
+    )
+
+def get_conflict_service() -> ConflictService:
+    """Фабрика для создания ConflictService"""
+    return ConflictService(
+        conflict_repository=DjangoConflictRepository(),
+        option_choice_repository=DjangoOptionChoicRepository()
+        
     )

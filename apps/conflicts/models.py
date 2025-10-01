@@ -229,7 +229,7 @@ class ConflictItem(BaseModel):
         self.agreed_choice = None
 
 
-class OptionChoice(BaseModel):
+class OptionChoiceModel(BaseModel):
     value = models.TextField(unique=True) # Текст варианта. Должен быть уникальным.
     is_predefined = models.BooleanField(default=False) # Флаг, что это наш "шаблон"
 

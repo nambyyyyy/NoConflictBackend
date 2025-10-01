@@ -1,6 +1,8 @@
-from backend.core.entities.conflict import Conflict
-from core.interfaces.conflict_interface import ConflictRepository
-from apps.conflicts.models import ConflictModel
+from uuid import UUID
+from core.entities.conflict import Conflict
+from core.entities.option_choice import OptionChoice
+from core.interfaces.conflict_interface import ConflictRepository, OptionChoicRepository
+from apps.conflicts.models import ConflictModel, OptionChoiceModel
 from apps.accounts.models import UserModel
 from typing import Optional
 
@@ -35,7 +37,7 @@ class DjangoConflictRepository(ConflictRepository):
                 if conflict.truce_initiator_id
                 else None
             )
-        except UserModel.DoesNotExist:
+        except Exception:
             return None
 
         # Создаем или обновляем
@@ -76,4 +78,28 @@ class DjangoConflictRepository(ConflictRepository):
                 if django_conflict.truce_initiator
                 else None
             ),
+        )
+
+
+# Набор опций для каждого пункта в конфликте
+class DjangoOptionChoicRepository(OptionChoicRepository):
+
+    def get_many(self, option_ids: list[UUID]) -> list[OptionChoice]:
+
+        options_dict = OptionChoiceModel.objects.in_bulk(option_ids)
+
+        options = [
+            self._to_entity(options_dict[oid])
+            for oid in option_ids
+            if oid in options_dict
+        ]
+        return options
+ 
+
+    def _to_entity(self, django_options_conflict: OptionChoiceModel) -> OptionChoice:
+        """Приватный метод конвертации"""
+        return OptionChoice(
+            id=django_options_conflict.id,
+            value=django_options_conflict.value,
+            is_predefined=django_options_conflict.is_predefined,
         )

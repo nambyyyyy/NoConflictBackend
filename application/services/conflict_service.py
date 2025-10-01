@@ -9,14 +9,13 @@ from application.dtos.conflict_dto import (
     ConflictShortDTO,
     OptionChoiceDTO,
 )
-from core.entities.conflict import Conflict, ConflictError
+from core.entities.conflict import Conflict
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
 from core.entities.option_choice import OptionChoice
-from uuid import UUID
-from typing import Optional, Any
-import re
-from dataclasses import asdict
+from typing import Any
+
+
 
 
 class ConflictService:
@@ -28,8 +27,10 @@ class ConflictService:
         self.conflict_repo = conflict_repository
         self.option_choice_repo = option_choice_repository
 
-    def create_conflict(self, validated_data: dict[str, Any]) -> ConflictDetailDTO:
-        conflict_entity: Conflict = Conflict(**validated_data)
+    def create_conflict(
+        self, creator_id: int, validated_data: dict[str, Any]
+    ) -> ConflictDetailDTO:
+        conflict_entity: Conflict = Conflict(creator_id=creator_id, **validated_data)
         saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
         return self._to_dto_detail(saved_conflict)
 
@@ -50,7 +51,9 @@ class ConflictService:
         )
 
     def _to_item_dto(self, item: ConflictItem) -> ConflictItemDTO:
-        options = self.option_choice_repo.get_many(item.available_option_ids)
+        options: list[OptionChoice] = self.option_choice_repo.get_many(
+            item.available_option_ids
+        )
         available_options = [
             OptionChoiceDTO(id=o.id, value=o.value, is_predefined=o.is_predefined)
             for o in options

@@ -55,3 +55,4 @@ class ConflictDetailDTO:
     truce_initiator_id: Optional[int]
     items: list["ConflictItemDTO"]
     events: list["ConflictEventDTO"]
+
