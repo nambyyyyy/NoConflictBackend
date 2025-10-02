@@ -46,7 +46,7 @@ class ConflictDetailDTO:
     id: UUID
     creator_id: UUID
     partner_id: Optional[UUID]
-    title: str
+    title: Optional[str]
     status: str
     slug: str
     progress: float

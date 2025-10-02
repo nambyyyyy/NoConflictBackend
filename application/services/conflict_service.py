@@ -1,4 +1,4 @@
-from backend.core.interfaces.conflict_interface import (
+from core.interfaces.conflict_interface import (
     ConflictRepository,
     OptionChoicRepository,
 )
@@ -25,21 +25,30 @@ class ConflictService:
     ):
         self.conflict_repo = conflict_repository
         self.option_choice_repo = option_choice_repository
-    
+
     def get_form_conflict(self, creator_id: UUID) -> ConflictDetailDTO:
         conflict_entity: Conflict = Conflict(
-            creator_id=creator_id, 
+            creator_id=creator_id,
         )
-        return self._to_dto_detail(conflict_entity) 
-        
+        return self._to_dto_detail(conflict_entity)
+
     def create_conflict(
-        self, creator_id: UUID, validated_data: dict[str, Any]
+        self, creator_id, validated_data: dict[str, Any]
     ) -> ConflictDetailDTO:
-        creator_id, partner_id, title = self._validate_conflict(
-            creator_id, validated_data.get("partner_id"), validated_data.get("title")
+        creator_id, partner_id, title, items, events = self._validate_conflict(
+            creator_id,
+            validated_data.get("partner_id"),
+            validated_data.get("title"),
+            validated_data.get("items"),
+            validated_data.get("events"),
         )
+
         conflict_entity: Conflict = Conflict(
-            creator_id=creator_id, partner_id=partner_id, title=title
+            creator_id=creator_id,
+            partner_id=partner_id,
+            title=title,
+            items=items,
+            events=events,
         )
         saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
         return self._to_dto_detail(saved_conflict)
@@ -49,7 +58,9 @@ class ConflictService:
         creator_id: UUID,
         partner_id: Optional[UUID] = None,
         title: Optional[str] = None,
-    ) -> tuple[UUID, Optional[UUID], str]:
+        items: Optional[list] = None,
+        events: Optional[list] = None,
+    ) -> tuple[UUID, Optional[UUID], str, list[dict], list[dict]]:
         if partner_id is not None:
             if creator_id == partner_id:
                 raise ConflictError("Нельзя назначить партнером самого себя")
@@ -57,7 +68,40 @@ class ConflictService:
         if title is None:
             title = self._generate_title()
 
-        return creator_id, partner_id, title
+        self._validate_items(items)
+
+        if not events:
+            raise ConflictError("Нельзя создать конфликт без единого события")
+
+        return creator_id, partner_id, title, items, events # type: ignore
+
+    def _validate_items(self, items: Optional[list]) -> None:
+        if not items:
+            raise ConflictError("Для создания конфликта нужен минимум один пункт")
+
+        for item in items:
+            item_id, item_type, available_options = (
+                item.get("id"),
+                item.get("item_type"),
+                item.get("options"),
+            )
+            if not item_id:
+                raise ConflictError("У item нет id")
+            if not item_type:
+                raise ConflictError("У item нет title")
+            if not available_options:
+                raise ConflictError("У item нет options")
+
+            if not isinstance(available_options, list):
+                raise ConflictError("Options должны быть списком")
+            
+            for opt in available_options:
+                opt_id = opt.get("id")
+                opt_value = opt.get("value")
+                if not opt_id:
+                    raise ConflictError("У опции нет id")
+                if not opt_value:
+                    raise ConflictError("У опции нет value")
 
     def _generate_title(self) -> str:
         short_id = str(uuid4()).replace("-", "")[:8]

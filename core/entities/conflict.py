@@ -15,7 +15,7 @@ class Conflict:
     partner_id: Optional[UUID] = None
     
     id: UUID = field(default_factory=uuid4)
-    title: str = ""
+    title: Optional[str] = None
     status: str = "pending"  # pending / in_progress / resolved / cancelled / abandoned
     slug: str = field(default_factory=lambda: str(uuid4()))
 

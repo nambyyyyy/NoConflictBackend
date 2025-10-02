@@ -1,6 +1,6 @@
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
-from backend.core.interfaces.link_interface import LinkDecoder
+from core.interfaces.link_interface import LinkDecoder
 
 
 class DjangoLinkDecoder(LinkDecoder):

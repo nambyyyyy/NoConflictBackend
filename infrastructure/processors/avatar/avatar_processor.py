@@ -1,7 +1,7 @@
 import os
 from uuid import UUID
 from django.core.files.uploadedfile import UploadedFile
-from backend.core.interfaces.avatar_processor import AvatarProcessor
+from core.interfaces.avatar_processor import AvatarProcessor
 from infrastructure.processors.avatar.avatar_validator import AvatarValidator
 from infrastructure.processors.avatar.filename_generator import FilenameGenerator
 from infrastructure.processors.avatar.image_processor import ImageProcessor

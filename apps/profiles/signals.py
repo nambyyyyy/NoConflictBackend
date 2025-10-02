@@ -1,6 +1,6 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from apps.profiles.models import Profile
+from apps.profiles.models import ProfileModel
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -9,4 +9,4 @@ User = get_user_model()
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:
-        Profile.objects.create(user=instance)
+        ProfileModel.objects.create(user=instance)

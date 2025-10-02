@@ -1,6 +1,6 @@
-from django.urls import re_path
-from apps.conflicts import consumers
+# from django.urls import re_path
+# from apps.conflicts import consumers
 
-websocket_urlpatterns = [
-    re_path(r'ws/conflicts/(?P<slug>[^/]+)/$', consumers.ConflictConsumer.as_asgi()),
-]
+# websocket_urlpatterns = [
+#     re_path(r'ws/conflicts/(?P<slug>[^/]+)/$', consumers.ConflictConsumer.as_asgi()),
+# ]

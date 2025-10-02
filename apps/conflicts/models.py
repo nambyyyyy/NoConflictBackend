@@ -158,7 +158,7 @@ class ConflictModel(IsDeletedModel):
         return f"Conflict {self.id} by {self.creator.username} ({self.status})"
 
 
-class ConflictItem(BaseModel):
+class ConflictItemModel(BaseModel):
     ITEM_TYPES = [
         ("reason", "Причина конфликта"),
         ("description", "Описание ситуации"),
@@ -172,25 +172,25 @@ class ConflictItem(BaseModel):
     item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
 
     available_options = models.ManyToManyField(
-        "OptionChoice",
+        "OptionChoiceModel",
         related_name="used_in_items"
     )
 
     # 2. Выбор создателя и партнера ссылается на OptionChoice.
     creator_choice = models.ForeignKey(
-        "OptionChoice",
+        "OptionChoiceModel",
         on_delete=models.SET_NULL,
         related_name="chosen_by_creators",
         null=True, blank=True
     )
     partner_choice = models.ForeignKey(
-        "OptionChoice",
+        "OptionChoiceModel",
         on_delete=models.SET_NULL,
         related_name="chosen_by_partners",
         null=True, blank=True
     )
     agreed_choice = models.ForeignKey(
-        "OptionChoice",
+        "OptionChoiceModel",
         on_delete=models.SET_NULL,
         related_name="agreed_in_conflicts",
         null=True, blank=True
@@ -199,7 +199,7 @@ class ConflictItem(BaseModel):
     is_agreed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"ConflictItem {self.id} for {self.conflict.id}"
+        return f"ConflictItemModel {self.id} for {self.conflict.id}"
 
     def update_status(self):
         if self.creator_choice and self.partner_choice:
@@ -237,7 +237,7 @@ class OptionChoiceModel(BaseModel):
         return self.value
 
 
-class ConflictEvent(BaseModel):
+class ConflictEventModel(BaseModel):
     # История событий конфликта
     EVENT_TYPES = [
         ('truce_proposed', 'Предложено перемирие'),
@@ -273,7 +273,7 @@ class ConflictEvent(BaseModel):
         Предназначен для вызова из асинхронного кода.
         """
         # Используем асинхронный метод .acreate()
-        event = await ConflictEvent.objects.acreate(
+        event = await ConflictEventModel.objects.acreate(
             conflict=conflict,
             initiator=initiator,
             event_type=event_type,

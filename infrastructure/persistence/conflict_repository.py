@@ -57,6 +57,10 @@ class DjangoConflictRepository(ConflictRepository):
                 "truce_initiator": truce_initiator,
             },
         )
+        # Создать item и options в БД, связать с конфликтом
+        # for item in conflict.items:
+            
+        
         return self._to_entity(django_conflict)
 
     def _to_entity(self, django_conflict: ConflictModel) -> Conflict:

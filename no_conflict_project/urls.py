@@ -33,8 +33,4 @@ urlpatterns = [
         name="swagger-ui",
     ),
     path('api/v1/', include('presentation.api.v1.urls')),
-    # path("api/v1/profile/", include("apps.profiles.urls")),
-    # path("api/v1/login/", include("apps.login.urls")),
-    # path("api/v1/partners/", include("apps.partners.urls")),
-    # path("api/v1/conflicts/", include("apps.conflicts.urls")),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

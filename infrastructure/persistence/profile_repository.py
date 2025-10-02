@@ -1,9 +1,9 @@
-from backend.core.interfaces.profile_interface import ProfileRepository
+from core.interfaces.profile_interface import ProfileRepository
 from apps.profiles.models import ProfileModel
 from core.entities.profile import Profile
 from typing import Optional, Any
 from uuid import UUID
-from datetime import datetime
+
 
 
 class DjangoProfielRepository(ProfileRepository):

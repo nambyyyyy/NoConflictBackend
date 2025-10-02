@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.common.permissions import IsOwnerOrPartner
-from apps.conflicts.models import ConflictModel, ConflictEvent
+from apps.conflicts.models import ConflictModel, ConflictEventModel
 from apps.conflicts.serializers import ConflictListSerializer, ConflictDetailSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, mixins

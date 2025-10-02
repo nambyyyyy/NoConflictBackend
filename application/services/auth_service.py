@@ -1,8 +1,8 @@
-from backend.core.interfaces.user_interface import UserRepository
-from backend.core.interfaces.token_interface import TokenRepository, JWTRepository
-from backend.core.interfaces.password_interface import PasswordHasher, PasswordValidator
-from backend.core.interfaces.transaction_interface import TransactionManager
-from backend.core.interfaces.link_interface import LinkDecoder
+from core.interfaces.user_interface import UserRepository
+from core.interfaces.token_interface import TokenRepository, JWTRepository
+from core.interfaces.password_interface import PasswordHasher, PasswordValidator
+from core.interfaces.transaction_interface import TransactionManager
+from core.interfaces.link_interface import LinkDecoder
 from application.dtos.user_dto import UserDTO
 from core.entities.user import User
 from uuid import uuid4
@@ -57,7 +57,7 @@ class AuthService:
         except (TypeError, ValueError, OverflowError, UnicodeDecodeError):
             raise ValueError("Invalid verification link")
 
-        user_entity: Optional[User] = self.user_repo.get_by_id(user_id=user_id)
+        user_entity: Optional[User] = self.user_repo.get_by_id(user_id)
         if user_entity is None:
             raise ValueError("Пользователь не найден")
 
@@ -84,8 +84,8 @@ class AuthService:
         refresh_token = self.jwt_repository.create_refresh_token(user_entity)
 
         return {
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "access": access_token,
+            "refresh": refresh_token,
             "token_type": "Bearer",
         }
 

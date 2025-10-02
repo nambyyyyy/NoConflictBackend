@@ -1,9 +1,10 @@
-from backend.core.interfaces.token_interface import TokenRepository, JWTRepository
+from core.interfaces.token_interface import TokenRepository, JWTRepository
 from apps.accounts.models import UserModel
 from django.contrib.auth.tokens import default_token_generator
 from core.entities.user import User
 from datetime import timedelta
 from django.utils import timezone
+from uuid import uuid4
 import jwt
 
 
@@ -29,20 +30,20 @@ class DjangoJWTRepository(JWTRepository):
         self.algorithm = algorithm
         
     def create_access_token(self, user: User) -> str:
-        # Реализация JWT access token
         payload = {
             'user_id': str(user.id),
             'email': user.email,
             'exp': timezone.now() + timedelta(minutes=15),
-            'type': 'access'
+            'token_type': 'access',
+            'jti': str(uuid4())
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
     
     def create_refresh_token(self, user: User) -> str:
-        # Реализация JWT refresh token
         payload = {
             'user_id': str(user.id),
             'exp': timezone.now() + timedelta(days=7),
-            'type': 'refresh'
+            'token_type': 'refresh',
+            'jti': str(uuid4())
         }
         return jwt.encode(payload, self.secret_key, algorithm=self.algorithm)
