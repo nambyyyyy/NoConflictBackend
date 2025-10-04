@@ -1,16 +1,14 @@
 from core.interfaces.conflict_interface import (
     ConflictRepository,
 )
+from core.interfaces.user_interface import UserRepository
 from application.dtos.conflict_dto import (
     ConflictDetailDTO,
-    ConflictEventDTO,
-    ConflictItemDTO,
-    ConflictShortDTO,
 )
 from core.entities.conflict import Conflict, ConflictError
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
-from typing import Any, Optional
+from typing import Any, Optional, Callable
 from uuid import uuid4, UUID
 
 
@@ -18,11 +16,16 @@ class ConflictService:
     def __init__(
         self,
         conflict_repository: ConflictRepository,
+        user_repository: UserRepository,
     ):
         self.conflict_repo = conflict_repository
+        self.user_repository = user_repository
 
     def create_conflict(
-        self, creator_id, validated_data: dict[str, Any]
+        self,
+        creator_id: UUID,
+        validated_data: dict[str, Any],
+        transaction_atomic: Callable,
     ) -> ConflictDetailDTO:
         creator_id, partner_id, title, items, events = self._validate_conflict(
             creator_id,
@@ -39,7 +42,9 @@ class ConflictService:
             items=items,
             events=events,
         )
-        saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
+        with transaction_atomic():
+            saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
+
         return self._to_dto_detail(saved_conflict)
 
     def _validate_conflict(
@@ -91,7 +96,7 @@ class ConflictService:
             truce_status=conflict.truce_status,
             truce_initiator_id=conflict.truce_initiator_id,
             items=self._to_item_dict(conflict.items),
-            events=[],
+            events=self._to_event_dict(conflict.items)
         )
 
     def _to_item_dict(self, items: list[ConflictItem]) -> list[dict]:
@@ -120,5 +125,18 @@ class ConflictService:
             )
         return items_data
 
-    # def _to_event_dict(self, event: ConflictEvent) -> ConflictEventDTO:
-    #     pass
+    def _to_event_dict(self, events: list[ConflictEvent]) -> list[dict]:
+        event_data = []
+        for event in events:
+            event_data.append(
+                {
+                    "id": event.id,
+                    "created_at": event.created_at,
+                    "initiator": event.initiator,
+                    "event_type": event.event_type,
+                    "item_id": event.item_id,
+                    "old_value": event.old_value,
+                    "new_value": event.new_value,
+                }
+            )
+        return event_data

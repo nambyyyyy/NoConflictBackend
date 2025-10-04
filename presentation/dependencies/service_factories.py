@@ -55,5 +55,6 @@ def get_conflict_service() -> ConflictService:
     """Фабрика для создания ConflictService"""
     return ConflictService(
         conflict_repository=DjangoConflictRepository(),
+        user_repository=DjangoUserRepository()
         
     )

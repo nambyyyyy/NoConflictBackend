@@ -159,7 +159,6 @@ class ConflictItemModel(BaseModel):
     )
     title = models.CharField(max_length=100)
 
-    # 2. Выбор создателя и партнера ссылается на OptionChoice.
     creator_choice_value = models.TextField(blank=True, null=True)
     partner_choice_value = models.TextField(blank=True, null=True)
     agreed_choice_value = models.TextField(blank=True, null=True)
@@ -224,8 +223,16 @@ class ConflictEventModel(BaseModel):
             "label": "Пункт успешно согласован",
             "requires": ["initiator", "item"],
         },
+        "item_add": {
+            "label": "Пункт успешно добавлен",
+            "requires": ["initiator"],
+        },
         "conflict_join_success": {
             "label": "Пользователь успешно присоединился",
+            "requires": ["initiator"],
+        },
+        "conflict_create": {
+            "label": "Конфликт создан",
             "requires": ["initiator"],
         },
     }
@@ -244,6 +251,9 @@ class ConflictEventModel(BaseModel):
         max_length=50,
         choices=[(key, meta["label"]) for key, meta in EVENT_META.items()],
     )
+
+    old_value = models.TextField(null=True, blank=True)
+    new_value = models.TextField(null=True, blank=True)
 
     @staticmethod
     async def acreate_event(conflict, event_type, **kwargs):

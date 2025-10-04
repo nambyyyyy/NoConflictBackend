@@ -8,6 +8,7 @@ from application.dtos.conflict_dto import ConflictDetailDTO
 from application.services.conflict_service import ConflictService
 from typing import Any, Dict
 from rest_framework.permissions import IsAuthenticated
+from django.db import transaction
 
 
 class CreateConflictView(APIView):
@@ -23,10 +24,9 @@ class CreateConflictView(APIView):
         # Получаем сервис (Application Layer)
         conflict_service: ConflictService = get_conflict_service()
         
-        print(validated_data)
         try:
             conflict_dto: ConflictDetailDTO = conflict_service.create_conflict(
-                request.user.id, validated_data
+                request.user.id, validated_data, transaction.atomic
             )
             return Response(conflict_dto.__dict__, status=201)
 

@@ -1,9 +1,8 @@
-from uuid import UUID
 from core.entities.conflict import Conflict
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
 from core.interfaces.conflict_interface import ConflictRepository
-from apps.conflicts.models import ConflictModel, ConflictItemModel
+from apps.conflicts.models import ConflictModel, ConflictItemModel, ConflictEventModel
 from apps.accounts.models import UserModel
 from typing import Optional
 
@@ -17,31 +16,13 @@ class DjangoConflictRepository(ConflictRepository):
         except ConflictModel.DoesNotExist:
             return None
 
-    def save(self, conflict: Conflict) -> Optional[Conflict]:
-        condition = []
-
-        if conflict.partner_id:
-            condition.append(conflict.partner_id)
-        if conflict.truce_initiator_id:
-            condition.append(conflict.truce_initiator_id)
-
-        condition.append(conflict.creator_id)
-        try:
-            users = UserModel.objects.in_bulk(condition)
-            creator = users.get(conflict.creator_id)
-            if creator is None:
-                return None
-
-            partner = users.get(conflict.partner_id) if conflict.partner_id else None
-            truce_initiator = (
-                users.get(conflict.truce_initiator_id)
-                if conflict.truce_initiator_id
-                else None
-            )
-        except Exception:
-            return None
-
-        # Создаем или обновляем
+    def save(
+        self,
+        conflict: Conflict,
+        creator: UserModel,
+        partner: Optional[UserModel] = None,
+        truce_initiator: Optional[UserModel] = None,
+    ) -> Conflict:
         django_conflict, created = ConflictModel.objects.update_or_create(
             id=conflict.id,
             defaults={
@@ -58,19 +39,50 @@ class DjangoConflictRepository(ConflictRepository):
                 "truce_initiator": truce_initiator,
             },
         )
-
         if created:
-            self._create_conflict_items(django_conflict, conflict.items)
-
+            items: list[ConflictItemModel] = self._create_conflict_items(
+                django_conflict, conflict.items
+            )
+            events: list[ConflictEventModel] = self._create_conflict_events(
+                django_conflict, items
+            )
+            if items and events:
+                ConflictEventModel.objects.create(
+                    conflict=django_conflict,
+                    initiator=django_conflict.creator,
+                    event_type="conflict_create",
+                )
         return self._to_entity(django_conflict)
 
-    def _create_conflict_items(self, django_conflict: ConflictModel, items: list[dict]):
-        for item in items:
+    def _create_conflict_items(
+        self, django_conflict: ConflictModel, items: list[dict]
+    ) -> list[ConflictItemModel]:
+
+        result = [
             ConflictItemModel.objects.create(
                 conflict=django_conflict,
                 title=item["title"],
                 creator_choice_value=item["creator_choice_value"],
             )
+            for item in items
+        ]
+
+        return result
+
+    def _create_conflict_events(
+        self, django_conflict: ConflictModel, items: list[ConflictItemModel]
+    ) -> list[ConflictEventModel]:
+        result = [
+            ConflictEventModel.objects.create(
+                conflict=django_conflict,
+                item=item,
+                initiator=django_conflict.creator,
+                event_type="item_add",
+                new_value=item.creator_choice_value,
+            )
+            for item in items
+        ]
+        return result
 
     def _to_entity(self, django_conflict: ConflictModel) -> Conflict:
         """Приватный метод конвертации"""
@@ -82,25 +94,27 @@ class DjangoConflictRepository(ConflictRepository):
                 creator_choice_value=item.creator_choice_value,
                 partner_choice_value=item.partner_choice_value,
                 agreed_choice_value=item.agreed_choice_value,
-                is_agreed=item.is_agreed
+                is_agreed=item.is_agreed,
             )
             for item in django_conflict.items.all()
         ]
 
-        # events_data = [
-        #     ConflictEvent(
-        #         id=event.id,
-        #         conflict_id=django_conflict.id,
-        #         created_at=event.created_at,
-        #         initiator_id=event.initiator_id,
-                
-                
-        #     )
-        #     {
-        #         "type": event.type,
-        #     }
-        #     for event in django_conflict.events.all()
-        # ]
+        events_data = [
+            ConflictEvent(
+                id=event.id,
+                conflict_id=django_conflict.id,
+                created_at=event.created_at,
+                initiator={
+                    "id": event.initiator.id,
+                    "username": event.initiator.username,
+                },
+                event_type=event.event_type,
+                item_id=event.item_id,
+                old_value=event.old_value,
+                new_value=event.new_value,
+            )
+            for event in django_conflict.events.all() # type: ignore
+        ]
 
         return Conflict(
             id=django_conflict.id,
@@ -119,5 +133,6 @@ class DjangoConflictRepository(ConflictRepository):
                 if django_conflict.truce_initiator
                 else None
             ),
-            items=items_data
+            items=items_data,
+            events=events_data,
         )

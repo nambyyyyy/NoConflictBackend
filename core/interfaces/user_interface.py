@@ -20,6 +20,11 @@ class UserRepository(ABC):
     def get_by_id(self, user_id: UUID) -> Optional[User]:
         """Найти пользователя по ID (понадобится для подтверждения email)"""
         pass
+    
+    @abstractmethod
+    def get_many_id(self, user_ids: list[UUID]) -> Optional[list[User]]:
+        """Найти пользователя по ID (понадобится для подтверждения email)"""
+        pass
 
     @abstractmethod
     def save(self, user: User) -> User:

@@ -5,25 +5,25 @@ from datetime import datetime
 
 
 
-@dataclass
-class ConflictItemDTO:
-    id: UUID
-    title: str
-    creator_choice_value: Optional[str]
-    partner_choice_value: Optional[str]
-    agreed_choice_value: Optional[str]
-    is_agreed: bool
+# @dataclass
+# class ConflictItemDTO:
+#     id: UUID
+#     title: str
+#     creator_choice_value: Optional[str]
+#     partner_choice_value: Optional[str]
+#     agreed_choice_value: Optional[str]
+#     is_agreed: bool
 
 
-@dataclass
-class ConflictEventDTO:
-    id: UUID
-    event_type: str
-    created_at: datetime
-    initiator_id: Optional[UUID]
-    initiator_name: Optional[str] = None
-    initiator_avatar_url: Optional[str] = None
-    details: Optional[dict[str, Any]] = None
+# @dataclass
+# class ConflictEventDTO:
+#     id: UUID
+#     event_type: str
+#     created_at: datetime
+#     initiator_id: Optional[UUID]
+#     initiator_name: Optional[str] = None
+#     initiator_avatar_url: Optional[str] = None
+#     details: Optional[dict[str, Any]] = None
 
 
 @dataclass
