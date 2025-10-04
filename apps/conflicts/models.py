@@ -198,44 +198,74 @@ class ConflictItemModel(BaseModel):
         self.agreed_choice_value = None
 
 
-
 class ConflictEventModel(BaseModel):
-    # История событий конфликта
-    EVENT_TYPES = [
-        ("truce_proposed", "Предложено перемирие"),
-        ("truce_accepted", "Перемирие принято"),
-        ("truce_declined", "Перемирие отклонено"),
-        ("conflict_delete", "Конфликт удален"),
-        ("conflict_cancel", "Конфликт отменен"),
-        ("conflict_join_success", "Пользователь успешно присоединен"),
-    ]
+    EVENT_META = {
+        "truce_proposed": {
+            "label": "Предложено перемирие",
+            "requires": ["initiator"],
+        },
+        "truce_accepted": {
+            "label": "Перемирие принято",
+            "requires": ["initiator"],
+        },
+        "truce_declined": {
+            "label": "Перемирие отклонено",
+            "requires": ["initiator"],
+        },
+        "conflict_delete": {
+            "label": "Конфликт удален",
+            "requires": [],
+        },
+        "conflict_cancel": {
+            "label": "Конфликт отменен",
+            "requires": ["initiator"],
+        },
+        "item_agreed": {
+            "label": "Пункт успешно согласован",
+            "requires": ["initiator", "item"],
+        },
+        "conflict_join_success": {
+            "label": "Пользователь успешно присоединился",
+            "requires": ["initiator"],
+        },
+    }
 
     conflict = models.ForeignKey(
         ConflictModel, on_delete=models.CASCADE, related_name="events"
+    )
+    item = models.ForeignKey(
+        ConflictItemModel, on_delete=models.CASCADE, related_name="items", null=True
     )
 
     # Кто инициировал событие
     initiator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
 
-    event_type = models.CharField(max_length=50, choices=EVENT_TYPES)
-
-    # Дополнительные детали в формате JSON, если понадобятся
-    details = models.JSONField(null=True, blank=True)
+    event_type = models.CharField(
+        max_length=50,
+        choices=[(key, meta["label"]) for key, meta in EVENT_META.items()],
+    )
 
     @staticmethod
-    async def acreate_event(conflict, initiator, event_type, details=None):
+    async def acreate_event(conflict, event_type, **kwargs):
         """
         АСИНХРОННЫЙ универсальный метод для создания события.
         Предназначен для вызова из асинхронного кода.
         """
-        # Используем асинхронный метод .acreate()
-        event = await ConflictEventModel.objects.acreate(
-            conflict=conflict,
-            initiator=initiator,
-            event_type=event_type,
-            details=details,
-        )
-        return event
+        meta = ConflictEventModel.EVENT_META.get(event_type)
+        if not meta:
+            raise ValueError(f"Неизвестный тип события: {event_type}")
+
+        required = set(meta["requires"])
+        missing = [r for r in required if r not in kwargs]
+        if missing:
+            raise ValueError(
+                f"Для события '{event_type}' нужны аргументы: {', '.join(missing)}"
+            )
+
+        fields = dict(conflict=conflict, event_type=event_type)
+        fields.update({key: kwargs.get(key) for key in ["initiator", "item"]})
+
+        return await ConflictEventModel.objects.acreate(**fields)
 
     def __str__(self):
         return (
