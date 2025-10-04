@@ -34,16 +34,12 @@ class IsOwnerOnly(BaseIsOwnerPermission):
 
 class IsOwnerOrPartner(BaseIsOwnerPermission):
     def has_object_permission(self, request, view, obj):
-        # Если действие - 'join', и партнер еще не назначен,
-        # то любой аутентифицированный пользователь может попытаться присоединиться.
-        # Сам метод join() внутри проверит, не является ли он создателем.
         if request.user.is_staff:
             return True
         
         if view.action == 'join' and obj.partner is None:
             return True
 
-        # Во всех остальных случаях - доступ только для участников
         if obj.partner is None:
             return obj.creator == request.user
             

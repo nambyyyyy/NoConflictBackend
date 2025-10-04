@@ -117,7 +117,6 @@ class ConflictModel(IsDeletedModel):
             self.delete()
 
     def validate_truce_proposal(self, user):
-        # 1. Проверки безопасности и бизнес-логики
         if user not in (self.creator, self.partner):
             return ValidationError("Вы не участник")
 
@@ -170,7 +169,7 @@ class ConflictItemModel(BaseModel):
 
     def update_status(self):
         if self.creator_choice_value and self.partner_choice_value:
-            # Если ответы совпадают - пункт согласован!
+            # Если ответы совпадают - пункт согласован
             if self.creator_choice_value == self.partner_choice_value:
                 self.is_agreed = True
                 self.agreed_choice_value = self.creator_choice_value

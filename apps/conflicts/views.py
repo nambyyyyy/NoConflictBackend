@@ -3,7 +3,6 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from apps.common.permissions import IsOwnerOrPartner
 from apps.conflicts.models import ConflictModel, ConflictEventModel
-from apps.conflicts.serializers import ConflictListSerializer, ConflictDetailSerializer
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, mixins
 from rest_framework.serializers import Serializer
@@ -34,15 +33,8 @@ class ConflictViewSet(
         Этот метод гарантирует, что пользователь увидит только те конфликты,
         в которых он является создателем или партнером.
         """
-        # Используем наш готовый менеджер из модели Conflict
         return ConflictModel.get_for_user(self.request.user).order_by('-created_at')
 
-    def get_serializer_class(self) -> Type[Serializer]: # type: ignore
-        if self.action == 'list':
-            # Если запрос на список - используем простой сериализатор
-            return ConflictListSerializer
-        return ConflictDetailSerializer
-     
     
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -50,7 +42,6 @@ class ConflictViewSet(
         conflict_instance = serializer.save(creator=self.request.user)    
         response_data = self.get_serializer(conflict_instance).data
     
-    # Добавление ссылки-приглашения, если нужно.
         if not conflict_instance.partner:
             invite_link = request.build_absolute_uri(f'/conflicts/{conflict_instance.slug}/join-page/')
             response_data['invite_link'] = invite_link
@@ -82,9 +73,9 @@ class ConflictViewSet(
 
 
     @action(
-        detail=True,      # Действие над ОДНИМ объектом
-        methods=['post'], # POST - это стандарт для изменения состояния ресурса
-        url_path='cancel' # Явное имя для URL, чтобы не пересекалось с методом модели
+        detail=True,      
+        methods=['post'], 
+        url_path='cancel' 
     )
     def cancel_conflict(self, request, slug=None):
         conflict, user = self.get_object(), request.user
@@ -121,7 +112,6 @@ class ConflictViewSet(
                 create_event_sync = async_to_sync(ConflictEvent.acreate_event)  
                 create_event_sync(conflict=conflict, initiator=user, event_type='conflict_delete') 
         except (ValidationError, IntegrityError) as e:
-            # Ловим ошибку, если конфликт уже был удален.
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -163,7 +153,7 @@ class ConflictViewSet(
         
         try:
             with transaction.atomic():
-                conflict.resolve(manual=True) # Используем наш старый метод resolve
+                conflict.resolve(manual=True) 
                 conflict.truce_status = 'accepted'
                 conflict.save()           
                 create_event_sync = async_to_sync(ConflictEvent.acreate_event)          
@@ -172,7 +162,6 @@ class ConflictViewSet(
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
                
         # 3. Отправляем WebSocket-уведомление обоим
-        # send_websocket_notification(to_group=..., type='truce_accepted')
 
         return Response(self.get_serializer(conflict).data, status=200)
     
