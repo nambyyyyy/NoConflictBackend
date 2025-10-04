@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 import uuid
 from apps.common.models import IsDeletedModel, BaseModel
 from django.utils import timezone
+
 User = get_user_model()  # Получаем вашу модель User (из accounts или auth)
 
 
@@ -14,14 +15,17 @@ class ConflictModel(IsDeletedModel):
         ("in_progress", "В процессе"),  # Когда оба пользователя присоединены
         ("resolved", "Разрешен"),  # Полностью согласован или manually завершён
         ("cancelled", "Отменен"),  # Отказ от продолжения
-        ("abandoned", "Заброшен")  # Заброшен. Вызывается отдельно скриптом в случае истечения срока действия.
+        (
+            "abandoned",
+            "Заброшен",
+        ),  # Заброшен. Вызывается отдельно скриптом в случае истечения срока действия.
     ]
-    
+
     # Статусы предложения примирения
     TRUCE_STATUS_CHOICES = [
-        ('none', 'Нет предложения'), 
-        ('pending', 'Ожидает ответа'),
-        ('accepted', 'Принято'),
+        ("none", "Нет предложения"),
+        ("pending", "Ожидает ответа"),
+        ("accepted", "Принято"),
     ]
 
     creator = models.ForeignKey(
@@ -41,22 +45,19 @@ class ConflictModel(IsDeletedModel):
     resolved_at = models.DateTimeField(null=True, blank=True)
     deleted_by_creator = models.BooleanField(default=False)
     deleted_by_partner = models.BooleanField(default=False)
-    
+
     truce_status = models.CharField(
-        max_length=10, 
-        choices=TRUCE_STATUS_CHOICES, 
-        default='none'
+        max_length=10, choices=TRUCE_STATUS_CHOICES, default="none"
     )
-    
+
     # Кто был инициатором предложения
     truce_initiator = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="initiated_truces"
+        related_name="initiated_truces",
     )
-
 
     def save(self, *args, **kwargs):
         if not self.slug and not self.pk:  # Генерируем slug только при создании
@@ -92,13 +93,12 @@ class ConflictModel(IsDeletedModel):
         self.status = "cancelled"
 
     def update_progress(self):
-        items = self.items.all() # type: ignore
+        items = self.items.all()  # type: ignore
         if items.exists():
             agreed_count = items.filter(is_agreed=True).count()
             self.progress = agreed_count / items.count() * 100
         else:
             self.progress = 0.0
-
 
     def soft_delete_for_user(self, user):
         if user == self.creator:
@@ -116,85 +116,53 @@ class ConflictModel(IsDeletedModel):
         if self.deleted_by_creator and self.deleted_by_partner:
             self.delete()
 
-    
     def validate_truce_proposal(self, user):
         # 1. Проверки безопасности и бизнес-логики
         if user not in (self.creator, self.partner):
             return ValidationError("Вы не участник")
-        
+
         if not (self.partner and self.creator):
             raise ValidationError("В конфликте не все участники.")
-        
-        if self.status != 'in_progress':
-            raise ValidationError("Конфликт уже разрешен, отменен, заброшен или не начат.")
-        
-        if self.truce_status == 'pending':
+
+        if self.status != "in_progress":
+            raise ValidationError(
+                "Конфликт уже разрешен, отменен, заброшен или не начат."
+            )
+
+        if self.truce_status == "pending":
             return ValidationError("Предложение уже отправлено")
-        
-        
-        is_answered = not self.items.filter(
-        creator_choice__isnull=True
-        ).exists() and not self.items.filter(
-        partner_choice__isnull=True
-        ).exists()
-        
+
+        is_answered = (
+            not self.items.filter(creator_choice__isnull=True).exists()
+            and not self.items.filter(partner_choice__isnull=True).exists()
+        )
+
         if not is_answered:
             raise ValidationError("Не все пункты анкеты заполнены обоими участниками.")
-        
-            
-    
 
     @classmethod
     def get_for_user(cls, user):
         return cls.objects.filter(
             is_deleted=False,
         ).filter(
-            (models.Q(creator=user) & models.Q(deleted_by_creator=False)) |
-            (models.Q(partner=user) & models.Q(deleted_by_partner=False))
+            (models.Q(creator=user) & models.Q(deleted_by_creator=False))
+            | (models.Q(partner=user) & models.Q(deleted_by_partner=False))
         )
-        
 
     def __str__(self):
         return f"Conflict {self.id} by {self.creator.username} ({self.status})"
 
 
 class ConflictItemModel(BaseModel):
-    ITEM_TYPES = [
-        ("reason", "Причина конфликта"),
-        ("description", "Описание ситуации"),
-        ("impact", "Влияние на стороны"),
-        ("proposal", "Предложение решения"),
-    ]
-
     conflict = models.ForeignKey(
         ConflictModel, on_delete=models.CASCADE, related_name="items"
     )
-    item_type = models.CharField(max_length=100, choices=ITEM_TYPES)
-
-    available_options = models.ManyToManyField(
-        "OptionChoiceModel",
-        related_name="used_in_items"
-    )
+    title = models.CharField(max_length=100)
 
     # 2. Выбор создателя и партнера ссылается на OptionChoice.
-    creator_choice = models.ForeignKey(
-        "OptionChoiceModel",
-        on_delete=models.SET_NULL,
-        related_name="chosen_by_creators",
-        null=True, blank=True
-    )
-    partner_choice = models.ForeignKey(
-        "OptionChoiceModel",
-        on_delete=models.SET_NULL,
-        related_name="chosen_by_partners",
-        null=True, blank=True
-    )
-    agreed_choice = models.ForeignKey(
-        "OptionChoiceModel",
-        on_delete=models.SET_NULL,
-        related_name="agreed_in_conflicts",
-        null=True, blank=True
-    )
+    creator_choice_value = models.TextField(blank=True, null=True)
+    partner_choice_value = models.TextField(blank=True, null=True)
+    agreed_choice_value = models.TextField(blank=True, null=True)
 
     is_agreed = models.BooleanField(default=False)
 
@@ -202,70 +170,58 @@ class ConflictItemModel(BaseModel):
         return f"ConflictItemModel {self.id} for {self.conflict.id}"
 
     def update_status(self):
-        if self.creator_choice and self.partner_choice:
+        if self.creator_choice_value and self.partner_choice_value:
             # Если ответы совпадают - пункт согласован!
-            if self.creator_choice == self.partner_choice:
+            if self.creator_choice_value == self.partner_choice_value:
                 self.is_agreed = True
-                self.agreed_choice = self.creator_choice
+                self.agreed_choice_value = self.creator_choice_value
             else:
                 # Ответы есть, но они разные. Пункт не согласован.
                 self.is_agreed = False
-                self.agreed_choice = None
+                self.agreed_choice_value = None
         else:
             # Если хотя бы один из пользователей еще не ответил, пункт не может быть согласован.
             self.is_agreed = False
-            self.agreed_choice = None
-
+            self.agreed_choice_value = None
 
     def unlock(self):
-        if self.conflict.status in ['resolved', 'cancelled', 'abandoned']:
-            raise ValidationError("Нельзя изменить пункт в завершенном или отмененном конфликте.")
+        if self.conflict.status in ["resolved", "cancelled", "abandoned"]:
+            raise ValidationError(
+                "Нельзя изменить пункт в завершенном или отмененном конфликте."
+            )
 
         if not self.is_agreed:
             # Еще не согласован, подстраховка, просто скип.
             return
 
         self.is_agreed = False
-        self.agreed_choice = None
+        self.agreed_choice_value = None
 
-
-class OptionChoiceModel(BaseModel):
-    value = models.TextField(unique=True) # Текст варианта. Должен быть уникальным.
-    is_predefined = models.BooleanField(default=False) # Флаг, что это наш "шаблон"
-
-    def __str__(self):
-        return self.value
 
 
 class ConflictEventModel(BaseModel):
     # История событий конфликта
     EVENT_TYPES = [
-        ('truce_proposed', 'Предложено перемирие'),
-        ('truce_accepted', 'Перемирие принято'),
-        ('truce_declined', 'Перемирие отклонено'),
-        ('conflict_delete', 'Конфликт удален'),
-        ('conflict_cancel', 'Конфликт отменен'),
-        ('conflict_join_success', 'Пользователь успешно присоединен')
+        ("truce_proposed", "Предложено перемирие"),
+        ("truce_accepted", "Перемирие принято"),
+        ("truce_declined", "Перемирие отклонено"),
+        ("conflict_delete", "Конфликт удален"),
+        ("conflict_cancel", "Конфликт отменен"),
+        ("conflict_join_success", "Пользователь успешно присоединен"),
     ]
 
     conflict = models.ForeignKey(
-        ConflictModel, 
-        on_delete=models.CASCADE, 
-        related_name="events"
+        ConflictModel, on_delete=models.CASCADE, related_name="events"
     )
-    
+
     # Кто инициировал событие
-    initiator = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True
-    )
-    
+    initiator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+
     event_type = models.CharField(max_length=50, choices=EVENT_TYPES)
-    
+
     # Дополнительные детали в формате JSON, если понадобятся
     details = models.JSONField(null=True, blank=True)
-    
+
     @staticmethod
     async def acreate_event(conflict, initiator, event_type, details=None):
         """
@@ -277,10 +233,11 @@ class ConflictEventModel(BaseModel):
             conflict=conflict,
             initiator=initiator,
             event_type=event_type,
-            details=details
+            details=details,
         )
         return event
-    
 
     def __str__(self):
-        return f"Событие '{self.get_event_type_display()}' в конфликте {self.conflict.id}"
+        return (
+            f"Событие '{self.get_event_type_display()}' в конфликте {self.conflict.id}"
+        )

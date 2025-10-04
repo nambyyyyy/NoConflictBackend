@@ -4,21 +4,14 @@ from typing import Optional, Any
 from datetime import datetime
 
 
-@dataclass
-class OptionChoiceDTO:
-    id: UUID
-    value: str
-    is_predefined: bool
-
 
 @dataclass
 class ConflictItemDTO:
     id: UUID
-    item_type: str
-    available_options: list[OptionChoiceDTO]
-    creator_choice_id: Optional[UUID]
-    partner_choice_id: Optional[UUID]
-    agreed_choice_id: Optional[UUID]
+    title: str
+    creator_choice_value: Optional[str]
+    partner_choice_value: Optional[str]
+    agreed_choice_value: Optional[str]
     is_agreed: bool
 
 
@@ -53,6 +46,6 @@ class ConflictDetailDTO:
     resolved_at: Optional[datetime]
     truce_status: str
     truce_initiator_id: Optional[UUID]
-    items: list["ConflictItemDTO"]
-    events: list["ConflictEventDTO"]
+    items: list[dict]
+    events: list[dict]
 

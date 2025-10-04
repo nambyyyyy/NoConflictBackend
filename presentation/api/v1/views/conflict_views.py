@@ -22,7 +22,8 @@ class CreateConflictView(APIView):
 
         # Получаем сервис (Application Layer)
         conflict_service: ConflictService = get_conflict_service()
-
+        
+        print(validated_data)
         try:
             conflict_dto: ConflictDetailDTO = conflict_service.create_conflict(
                 request.user.id, validated_data
@@ -34,13 +35,3 @@ class CreateConflictView(APIView):
         except Exception as e:
             return Response({"error": "Internal server error"}, status=500)
 
-
-class ConflictFormTemplateView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        conflict_service: ConflictService = get_conflict_service()
-        empty_conflict_dto: ConflictDetailDTO = conflict_service.get_form_conflict(
-            request.user.id
-        )
-        return Response(empty_conflict_dto.__dict__, status=200)

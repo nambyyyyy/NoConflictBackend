@@ -1,18 +1,15 @@
 from core.interfaces.conflict_interface import (
     ConflictRepository,
-    OptionChoicRepository,
 )
 from application.dtos.conflict_dto import (
     ConflictDetailDTO,
     ConflictEventDTO,
     ConflictItemDTO,
     ConflictShortDTO,
-    OptionChoiceDTO,
 )
 from core.entities.conflict import Conflict, ConflictError
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
-from core.entities.option_choice import OptionChoice
 from typing import Any, Optional
 from uuid import uuid4, UUID
 
@@ -21,16 +18,8 @@ class ConflictService:
     def __init__(
         self,
         conflict_repository: ConflictRepository,
-        option_choice_repository: OptionChoicRepository,
     ):
         self.conflict_repo = conflict_repository
-        self.option_choice_repo = option_choice_repository
-
-    def get_form_conflict(self, creator_id: UUID) -> ConflictDetailDTO:
-        conflict_entity: Conflict = Conflict(
-            creator_id=creator_id,
-        )
-        return self._to_dto_detail(conflict_entity)
 
     def create_conflict(
         self, creator_id, validated_data: dict[str, Any]
@@ -73,35 +62,17 @@ class ConflictService:
         if not events:
             raise ConflictError("Нельзя создать конфликт без единого события")
 
-        return creator_id, partner_id, title, items, events # type: ignore
+        return creator_id, partner_id, title, items, events  # type: ignore
 
     def _validate_items(self, items: Optional[list]) -> None:
         if not items:
             raise ConflictError("Для создания конфликта нужен минимум один пункт")
 
         for item in items:
-            item_id, item_type, available_options = (
-                item.get("id"),
-                item.get("item_type"),
-                item.get("options"),
-            )
-            if not item_id:
-                raise ConflictError("У item нет id")
-            if not item_type:
+            if not item["title"]:
                 raise ConflictError("У item нет title")
-            if not available_options:
-                raise ConflictError("У item нет options")
-
-            if not isinstance(available_options, list):
-                raise ConflictError("Options должны быть списком")
-            
-            for opt in available_options:
-                opt_id = opt.get("id")
-                opt_value = opt.get("value")
-                if not opt_id:
-                    raise ConflictError("У опции нет id")
-                if not opt_value:
-                    raise ConflictError("У опции нет value")
+            if not item["creator_choice_value"]:
+                raise ConflictError("У item нет creator_choice_value")
 
     def _generate_title(self) -> str:
         short_id = str(uuid4()).replace("-", "")[:8]
@@ -119,34 +90,35 @@ class ConflictService:
             resolved_at=conflict.resolved_at,
             truce_status=conflict.truce_status,
             truce_initiator_id=conflict.truce_initiator_id,
-            items=[self._to_item_dto(item) for item in conflict.items],
-            events=[self._to_event_dto(event) for event in conflict.events],
+            items=self._to_item_dict(conflict.items),
+            events=[],
         )
 
-    def _to_item_dto(self, item: ConflictItem) -> ConflictItemDTO:
-        options: list[OptionChoice] = self.option_choice_repo.get_many(
-            item.available_option_ids
-        )
-        available_options = [
-            OptionChoiceDTO(id=o.id, value=o.value, is_predefined=o.is_predefined)
-            for o in options
-        ]
+    def _to_item_dict(self, items: list[ConflictItem]) -> list[dict]:
+        items_data = []
+        for item in items:
+            items_data.append(
+                {
+                    "title": str(item.title),
+                    "creator_choice_value": (
+                        str(item.creator_choice_value)
+                        if item.creator_choice_value
+                        else ""
+                    ),
+                    "partner_choice_value": (
+                        str(item.partner_choice_value)
+                        if item.partner_choice_value
+                        else ""
+                    ),
+                    "agreed_choice_value": (
+                        str(item.agreed_choice_value)
+                        if item.agreed_choice_value
+                        else ""
+                    ),
+                    "is_agreed": bool(item.is_agreed),
+                }
+            )
+        return items_data
 
-        return ConflictItemDTO(
-            id=item.id,
-            item_type=item.item_type,
-            available_options=available_options,
-            creator_choice_id=item.creator_choice_id,
-            partner_choice_id=item.partner_choice_id,
-            agreed_choice_id=item.agreed_choice_id,
-            is_agreed=item.is_agreed,
-        )
-
-    def _to_event_dto(self, event: ConflictEvent) -> ConflictEventDTO:
-        return ConflictEventDTO(
-            id=event.id,
-            event_type=event.event_type,
-            created_at=event.created_at,
-            initiator_id=event.initiator_id,
-            details=event.details,
-        )
+    # def _to_event_dict(self, event: ConflictEvent) -> ConflictEventDTO:
+    #     pass

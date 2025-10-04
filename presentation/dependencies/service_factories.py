@@ -5,7 +5,7 @@ from infrastructure.persistence.token_repository import (
 )
 from infrastructure.persistence.profile_repository import DjangoProfielRepository
 from infrastructure.persistence.transaction_manager import DjangoTransactionManager
-from infrastructure.persistence.conflict_repository import DjangoConflictRepository, DjangoOptionChoicRepository
+from infrastructure.persistence.conflict_repository import DjangoConflictRepository
 from infrastructure.security.django_password_hasher import DjangoPasswordHasher
 from infrastructure.security.django_password_validator import DjangoPasswordValidator
 from infrastructure.security.django_link_decoder import DjangoLinkDecoder
@@ -55,6 +55,5 @@ def get_conflict_service() -> ConflictService:
     """Фабрика для создания ConflictService"""
     return ConflictService(
         conflict_repository=DjangoConflictRepository(),
-        option_choice_repository=DjangoOptionChoicRepository()
         
     )

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 from uuid import UUID
 
@@ -7,27 +7,26 @@ from uuid import UUID
 class ConflictItem:
     id: UUID
     conflict_id: UUID
-    item_type: str
-    available_option_ids: list[UUID] = field(default_factory=list)
-    creator_choice_id: Optional[UUID] = None
-    partner_choice_id: Optional[UUID] = None
-    agreed_choice_id: Optional[UUID] = None
+    title: str
+    creator_choice_value: Optional[str] = None
+    partner_choice_value: Optional[str] = None
+    agreed_choice_value: Optional[str] = None
     is_agreed: bool = False
 
     def update_status(self):
-        if self.creator_choice_id and self.partner_choice_id:
+        if self.creator_choice_value and self.partner_choice_value:
             # Если ответы совпадают - пункт согласован!
-            if self.creator_choice_id == self.partner_choice_id:
+            if self.creator_choice_value == self.partner_choice_value:
                 self.is_agreed = True
-                self.agreed_choice_id = self.creator_choice_id
+                self.agreed_choice_value = self.creator_choice_value
             else:
                 # Ответы есть, но они разные. Пункт не согласован.
                 self.is_agreed = False
-                self.agreed_choice_id = None
+                self.agreed_choice_value = None
         else:
             # Если хотя бы один из пользователей еще не ответил, пункт не может быть согласован.
             self.is_agreed = False
-            self.agreed_choice_id = None
+            self.agreed_choice_value = None
 
     def unlock(self):
         if not self.is_agreed:
@@ -35,4 +34,4 @@ class ConflictItem:
             return
 
         self.is_agreed = False
-        self.agreed_choice_id = None
+        self.agreed_choice_value = None
