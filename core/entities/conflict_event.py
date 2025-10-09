@@ -9,7 +9,7 @@ class ConflictEvent:
     id: UUID
     conflict_id: UUID
     created_at: datetime
-    initiator: dict
+    initiator: Optional[dict]
     event_type: str
     item_id: Optional[UUID] = None
     old_value: Optional[str] = None

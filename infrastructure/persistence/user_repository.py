@@ -28,6 +28,13 @@ class DjangoUserRepository(UserRepository):
             return self._to_entity(django_user)
         except UserModel.DoesNotExist:
             return None
+    
+    def get_by_id_model(self, user_id: UUID) -> Optional[UserModel]:
+        try:
+            django_user = UserModel.objects.get(id=user_id)
+            return django_user
+        except UserModel.DoesNotExist:
+            return None
 
     def get_many_id(self, user_ids: list[UUID]) -> Optional[list[User]]:
         try:

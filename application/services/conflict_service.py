@@ -1,7 +1,8 @@
 from core.interfaces.conflict_interface import (
     ConflictRepository,
 )
-from core.interfaces.user_interface import UserRepository
+from core.interfaces.item_interface import ItemRepository
+from core.interfaces.event_interface import EventRepository
 from application.dtos.conflict_dto import (
     ConflictDetailDTO,
 )
@@ -16,10 +17,12 @@ class ConflictService:
     def __init__(
         self,
         conflict_repository: ConflictRepository,
-        user_repository: UserRepository,
+        item_repository: ItemRepository,
+        event_repository: EventRepository,
     ):
         self.conflict_repo = conflict_repository
-        self.user_repository = user_repository
+        self.item_repo = item_repository
+        self.event_repo = event_repository
 
     def create_conflict(
         self,
@@ -27,23 +30,58 @@ class ConflictService:
         validated_data: dict[str, Any],
         transaction_atomic: Callable,
     ) -> ConflictDetailDTO:
-        creator_id, partner_id, title, items, events = self._validate_conflict(
+
+        creator_id, partner_id, title, items = self._validate_conflict(
             creator_id,
             validated_data.get("partner_id"),
             validated_data.get("title"),
             validated_data.get("items"),
-            validated_data.get("events"),
         )
 
         conflict_entity: Conflict = Conflict(
             creator_id=creator_id,
             partner_id=partner_id,
             title=title,
-            items=items,
-            events=events,
         )
+        conflictitems_entity: list[ConflictItem] = [
+            ConflictItem(
+                id=item.get("id"),  # type: ignore
+                conflict_id=conflict_entity.id,
+                title=item.get("title"),  # type: ignore
+                creator_choice_value=item.get("creator_choice_value"),
+            )
+            for item in items
+        ]
+
         with transaction_atomic():
-            saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
+            saved_conflict: Conflict = self.conflict_repo.save(
+                conflict_entity, creator_id
+            )
+            saved_items: list[ConflictItem] = [
+                self.item_repo.save(item) for item in conflictitems_entity
+            ]
+
+            saved_events: list[ConflictEvent] = []
+            event_create = self.event_repo.save(
+                conflict_id=saved_conflict.id,
+                event_type="conflict_create",
+                user_id=saved_conflict.creator_id,
+            )
+            saved_events.append(event_create)
+
+            for item in saved_items:
+                saved_events.append(
+                    self.event_repo.save(
+                        conflict_id=saved_conflict.id,
+                        event_type="item_add",
+                        user_id=saved_conflict.creator_id,
+                        item_id=item.id,
+                        new_value=item.creator_choice_value
+                    )
+                )
+
+            saved_conflict.items = saved_items
+            saved_conflict.events = saved_events
 
         return self._to_dto_detail(saved_conflict)
 
@@ -53,8 +91,7 @@ class ConflictService:
         partner_id: Optional[UUID] = None,
         title: Optional[str] = None,
         items: Optional[list] = None,
-        events: Optional[list] = None,
-    ) -> tuple[UUID, Optional[UUID], str, list[dict], list[dict]]:
+    ) -> tuple[UUID, Optional[UUID], str, list[dict]]:
         if partner_id is not None:
             if creator_id == partner_id:
                 raise ConflictError("Нельзя назначить партнером самого себя")
@@ -64,10 +101,7 @@ class ConflictService:
 
         self._validate_items(items)
 
-        if not events:
-            raise ConflictError("Нельзя создать конфликт без единого события")
-
-        return creator_id, partner_id, title, items, events  # type: ignore
+        return creator_id, partner_id, title, items  # type: ignore
 
     def _validate_items(self, items: Optional[list]) -> None:
         if not items:
@@ -96,7 +130,7 @@ class ConflictService:
             truce_status=conflict.truce_status,
             truce_initiator_id=conflict.truce_initiator_id,
             items=self._to_item_dict(conflict.items),
-            events=self._to_event_dict(conflict.items)
+            events=self._to_event_dict(conflict.events),
         )
 
     def _to_item_dict(self, items: list[ConflictItem]) -> list[dict]:
@@ -104,23 +138,12 @@ class ConflictService:
         for item in items:
             items_data.append(
                 {
-                    "title": str(item.title),
-                    "creator_choice_value": (
-                        str(item.creator_choice_value)
-                        if item.creator_choice_value
-                        else ""
-                    ),
-                    "partner_choice_value": (
-                        str(item.partner_choice_value)
-                        if item.partner_choice_value
-                        else ""
-                    ),
-                    "agreed_choice_value": (
-                        str(item.agreed_choice_value)
-                        if item.agreed_choice_value
-                        else ""
-                    ),
-                    "is_agreed": bool(item.is_agreed),
+                    "id": item.id,
+                    "title": item.title,
+                    "creator_choice_value": item.creator_choice_value,
+                    "partner_choice_value": item.partner_choice_value,
+                    "agreed_choice_value": item.agreed_choice_value,
+                    "is_agreed": item.is_agreed,
                 }
             )
         return items_data

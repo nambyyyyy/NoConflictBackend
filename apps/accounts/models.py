@@ -29,3 +29,4 @@ class UserModel(AbstractBaseUser, IsDeletedModel, PermissionsMixin):
             models.Index(Lower("email"), name="user_email_ci_idx"),
             models.Index(Lower("username"), name="user_username_ci_idx"),
         ]
+

@@ -22,6 +22,12 @@ class UserRepository(ABC):
         pass
     
     @abstractmethod
+    def get_by_id_model(self, user_id: UUID) -> Optional[User]:
+        """Найти пользователя по ID и вернуть саму модель 
+        (понадобится для созданий связей в БД)"""
+        pass
+    
+    @abstractmethod
     def get_many_id(self, user_ids: list[UUID]) -> Optional[list[User]]:
         """Найти пользователя по ID (понадобится для подтверждения email)"""
         pass
@@ -40,3 +46,4 @@ class UserRepository(ABC):
     def delete(self, user_id: UUID) -> None:
         """Удалить пользователя"""
         pass
+    

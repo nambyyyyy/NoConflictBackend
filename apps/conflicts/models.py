@@ -152,7 +152,7 @@ class ConflictModel(IsDeletedModel):
         return f"Conflict {self.id} by {self.creator.username} ({self.status})"
 
 
-class ConflictItemModel(BaseModel):
+class ConflictItemModel(IsDeletedModel):
     conflict = models.ForeignKey(
         ConflictModel, on_delete=models.CASCADE, related_name="items"
     )
