@@ -12,6 +12,11 @@ class ConflictRepository(ABC):
     def get_by_id(self, conflict_id: UUID) -> Conflict:
         """Вернуть Conflict по conflict_id"""
         pass
+    
+    @abstractmethod
+    def get_by_slug(self, slug: str) -> Conflict:
+        """Вернуть Conflict по slug"""
+        pass
 
     @abstractmethod
     def save(

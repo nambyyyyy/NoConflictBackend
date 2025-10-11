@@ -11,6 +11,23 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 
 
+
+class ConflictView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, slug):     
+        conflict_service: ConflictService = get_conflict_service()
+        
+        try:
+            conflict_dto: ConflictDetailDTO = conflict_service.get_conflict(slug)
+            return Response(conflict_dto.__dict__, status=201)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            return Response({"error": "Internal server error"}, status=500)
+            
+        
+        
 class CreateConflictView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -34,4 +51,5 @@ class CreateConflictView(APIView):
             return Response({"error": str(e)}, status=400)
         except Exception as e:
             return Response({"error": "Internal server error"}, status=500)
+
 

@@ -22,7 +22,7 @@ class DjangotItemRepository(ItemRepository):
     def _to_entity(self, django_item: ConflictItemModel) -> ConflictItem:
         return ConflictItem(
             id=django_item.id,
-            conflict_id=django_item.conflict_id,
+            conflict_id=django_item.conflict_id, # type: ignore
             title=django_item.title,
             creator_choice_value=django_item.creator_choice_value,
             partner_choice_value=django_item.partner_choice_value,

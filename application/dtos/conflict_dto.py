@@ -1,41 +1,62 @@
 from dataclasses import dataclass
 from uuid import UUID
-from typing import Optional
+from typing import Optional, Any
 from datetime import datetime
+from abc import ABC, abstractmethod
 
 
+class BaseConflictDTO(ABC):
 
-# @dataclass
-# class ConflictItemDTO:
-#     id: UUID
-#     title: str
-#     creator_choice_value: Optional[str]
-#     partner_choice_value: Optional[str]
-#     agreed_choice_value: Optional[str]
-#     is_agreed: bool
-
-
-# @dataclass
-# class ConflictEventDTO:
-#     id: UUID
-#     event_type: str
-#     created_at: datetime
-#     initiator_id: Optional[UUID]
-#     initiator_name: Optional[str] = None
-#     initiator_avatar_url: Optional[str] = None
-#     details: Optional[dict[str, Any]] = None
+    @abstractmethod
+    def to_dict(self):
+        """Переопределить метод конвертации из объекта в словарь"""
+        pass
 
 
 @dataclass
-class ConflictShortDTO:
+class ConflictItemDTO(BaseConflictDTO):
     id: UUID
     title: str
-    status: str
-    progress: float
+    creator_choice_value: Optional[str]
+    partner_choice_value: Optional[str]
+    agreed_choice_value: Optional[str]
+    is_agreed: bool
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "title": self.title,
+            "creator_choice_value": self.creator_choice_value,
+            "partner_choice_value": self.partner_choice_value,
+            "agreed_choice_value": self.agreed_choice_value,
+            "is_agreed": self.is_agreed,
+        }
 
 
 @dataclass
-class ConflictDetailDTO:
+class ConflictEventDTO(BaseConflictDTO):
+    id: UUID
+    event_type: str
+    created_at: datetime
+    initiator: Optional[dict[str, Any]]
+    item_id: Optional[UUID]
+    old_value: Optional[str]
+    new_value: Optional[str]
+
+    def to_dict(self):
+        return {
+            "id": str(self.id),
+            "event_type": self.event_type,
+            "created_at": self.created_at.isoformat(),
+            "initiator": self.initiator,
+            "item_id": str(self.item_id) if self.item_id else None,
+            "old_value": self.old_value,
+            "new_value": self.new_value,
+        }
+
+
+@dataclass
+class ConflictDetailDTO(BaseConflictDTO):
     id: UUID
     creator_id: UUID
     partner_id: Optional[UUID]
@@ -43,9 +64,28 @@ class ConflictDetailDTO:
     status: str
     slug: str
     progress: float
+    created_at: datetime
     resolved_at: Optional[datetime]
     truce_status: str
     truce_initiator_id: Optional[UUID]
     items: list[dict]
     events: list[dict]
 
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "creator_id": str(self.creator_id),
+            "partner_id": str(self.partner_id),
+            "title": self.title,
+            "status": self.status,
+            "slug": self.slug,
+            "progress": self.progress,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+            "truce_status": self.truce_status,
+            "truce_initiator_id": (
+                str(self.truce_initiator_id) if self.truce_initiator_id else None
+            ),
+            "items": self.items,
+            "events": self.events,
+        }

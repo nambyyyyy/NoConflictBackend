@@ -12,10 +12,17 @@ class DjangoConflictRepository(ConflictRepository):
     def get_by_id(self, conflict_id: UUID) -> Optional[Conflict]:
         try:
             django_conflict = ConflictModel.objects.get(id=conflict_id)
-            return self._to_entity(django_conflict)
+            return self._to_entity_conflict(django_conflict)
         except ConflictModel.DoesNotExist:
             return None
-
+    
+    def get_by_slug(self, slug: str) -> Optional[Conflict]:
+        try:
+            django_conflict = ConflictModel.objects.get(slug=slug)
+            return self._to_entity_conflict(django_conflict)
+        except ConflictModel.DoesNotExist:
+            return None 
+    
     def save(
         self,
         conflict: Conflict,
@@ -40,10 +47,9 @@ class DjangoConflictRepository(ConflictRepository):
             },
         )
         
-        return self._to_entity(django_conflict)
-
-    def _to_entity(self, django_conflict: ConflictModel) -> Conflict:
-        """Приватный метод конвертации"""
+        return self._to_entity_conflict(django_conflict)
+    
+    def _to_entity_items(self, django_conflict: ConflictModel) -> list[ConflictItem]:
         items_data = [
             ConflictItem(
                 id=item.id,
@@ -54,9 +60,11 @@ class DjangoConflictRepository(ConflictRepository):
                 agreed_choice_value=item.agreed_choice_value,
                 is_agreed=item.is_agreed,
             )
-            for item in django_conflict.items.all()
+            for item in django_conflict.items.all() # type: ignore
         ]
-
+        return items_data
+    
+    def _to_entity_events(self, django_conflict: ConflictModel) -> list[ConflictEvent]:
         events_data = [
             ConflictEvent(
                 id=event.id,
@@ -73,6 +81,10 @@ class DjangoConflictRepository(ConflictRepository):
             )
             for event in django_conflict.events.all() # type: ignore
         ]
+        return events_data
+
+    def _to_entity_conflict(self, django_conflict: ConflictModel) -> Conflict:
+        """Приватный метод конвертации"""
 
         return Conflict(
             id=django_conflict.id,
@@ -82,6 +94,7 @@ class DjangoConflictRepository(ConflictRepository):
             status=django_conflict.status,
             slug=django_conflict.slug,
             progress=django_conflict.progress,
+            created_at=django_conflict.created_at,
             resolved_at=django_conflict.resolved_at,
             deleted_by_creator=django_conflict.deleted_by_creator,
             deleted_by_partner=django_conflict.deleted_by_partner,
@@ -91,6 +104,6 @@ class DjangoConflictRepository(ConflictRepository):
                 if django_conflict.truce_initiator
                 else None
             ),
-            items=items_data,
-            events=events_data,
+            items=self._to_entity_items(django_conflict),
+            events=self._to_entity_events(django_conflict),
         )

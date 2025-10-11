@@ -5,6 +5,8 @@ from core.interfaces.item_interface import ItemRepository
 from core.interfaces.event_interface import EventRepository
 from application.dtos.conflict_dto import (
     ConflictDetailDTO,
+    ConflictItemDTO,
+    ConflictEventDTO,
 )
 from core.entities.conflict import Conflict, ConflictError
 from core.entities.conflict_item import ConflictItem
@@ -23,6 +25,13 @@ class ConflictService:
         self.conflict_repo = conflict_repository
         self.item_repo = item_repository
         self.event_repo = event_repository
+
+    def get_conflict(self, slug: str) -> ConflictDetailDTO:
+        conflict_entity: Conflict = self.conflict_repo.get_by_slug(slug)
+        if conflict_entity is None:
+            raise ConflictError("Конфликт по указанному slug не найден")
+
+        return self._to_conflict_dto_detail(conflict_entity)
 
     def create_conflict(
         self,
@@ -76,14 +85,14 @@ class ConflictService:
                         event_type="item_add",
                         user_id=saved_conflict.creator_id,
                         item_id=item.id,
-                        new_value=item.creator_choice_value
+                        new_value=item.creator_choice_value,
                     )
                 )
 
             saved_conflict.items = saved_items
             saved_conflict.events = saved_events
 
-        return self._to_dto_detail(saved_conflict)
+        return self._to_conflict_dto_detail(saved_conflict)
 
     def _validate_conflict(
         self,
@@ -117,7 +126,14 @@ class ConflictService:
         short_id = str(uuid4()).replace("-", "")[:8]
         return f"Conflict - {short_id.upper()}"
 
-    def _to_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
+    def _to_conflict_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
+        items: list[dict] = [
+            self._to_item_dto(item).to_dict() for item in conflict.items
+        ]
+        events: list[dict] = [
+            self._to_event_dto(event).to_dict() for event in conflict.events
+        ]
+
         return ConflictDetailDTO(
             id=conflict.id,
             creator_id=conflict.creator_id,
@@ -126,40 +142,31 @@ class ConflictService:
             status=conflict.status,
             slug=conflict.slug,
             progress=conflict.progress,
+            created_at=conflict.created_at,
             resolved_at=conflict.resolved_at,
             truce_status=conflict.truce_status,
             truce_initiator_id=conflict.truce_initiator_id,
-            items=self._to_item_dict(conflict.items),
-            events=self._to_event_dict(conflict.events),
+            items=items,
+            events=events,
         )
 
-    def _to_item_dict(self, items: list[ConflictItem]) -> list[dict]:
-        items_data = []
-        for item in items:
-            items_data.append(
-                {
-                    "id": item.id,
-                    "title": item.title,
-                    "creator_choice_value": item.creator_choice_value,
-                    "partner_choice_value": item.partner_choice_value,
-                    "agreed_choice_value": item.agreed_choice_value,
-                    "is_agreed": item.is_agreed,
-                }
-            )
-        return items_data
+    def _to_item_dto(self, item: ConflictItem) -> ConflictItemDTO:
+        return ConflictItemDTO(
+            id=item.id,
+            title=item.title,
+            creator_choice_value=item.creator_choice_value,
+            partner_choice_value=item.partner_choice_value,
+            agreed_choice_value=item.agreed_choice_value,
+            is_agreed=item.is_agreed,
+        )
 
-    def _to_event_dict(self, events: list[ConflictEvent]) -> list[dict]:
-        event_data = []
-        for event in events:
-            event_data.append(
-                {
-                    "id": event.id,
-                    "created_at": event.created_at,
-                    "initiator": event.initiator,
-                    "event_type": event.event_type,
-                    "item_id": event.item_id,
-                    "old_value": event.old_value,
-                    "new_value": event.new_value,
-                }
-            )
-        return event_data
+    def _to_event_dto(self, event: ConflictEvent) -> ConflictEventDTO:
+        return ConflictEventDTO(
+            id=event.id,
+            event_type=event.event_type,
+            created_at=event.created_at,
+            initiator=event.initiator,
+            item_id=event.item_id,
+            old_value=event.old_value,
+            new_value=event.new_value,
+        )
