@@ -10,11 +10,11 @@ class ConflictError(Exception):
 
 @dataclass
 class Conflict:
+    title: str
     creator_id: UUID
-    partner_id: Optional[UUID] = None
+    partner_id: Optional[UUID] = None 
     
     id: UUID = field(default_factory=uuid4)
-    title: Optional[str] = None
     status: str = "pending"  # pending / in_progress / resolved / cancelled / abandoned
     slug: str = field(default_factory=lambda: str(uuid4()))
 

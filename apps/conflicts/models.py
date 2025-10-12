@@ -38,7 +38,7 @@ class ConflictModel(IsDeletedModel):
         blank=True,
         related_name="partnered_conflicts",
     )  # User B (опционально)
-    title = models.CharField(max_length=255, blank=True)  # Опциональный заголовок
+    title = models.CharField(max_length=255)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     slug = models.SlugField(unique=True, blank=True)
     progress = models.FloatField(default=0.0)  # % прогресса
