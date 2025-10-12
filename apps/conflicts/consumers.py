@@ -1,3 +1,6 @@
+# Модуль более не актуален! Переезд в presentation/ws
+# Использовать только как ориентир с прошлой архитектуры. 
+
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
