@@ -28,10 +28,10 @@ class Partner(IsDeletedModel):
             models.Index(fields=["-created_at"]),
         ]
 
-    def save(self, *args, **kwargs):
-        if self.owner == self.partner:
-            raise ValueError("Нельзя добавить самого себя в партнеры.")
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if self.owner == self.partner:
+    #         raise ValueError("Нельзя добавить самого себя в партнеры.")
+    #     super().save(*args, **kwargs)
 
 
 
@@ -54,9 +54,9 @@ class PartnerRequest(IsDeletedModel):
     def __str__(self):
         return f"{self.sender} → {self.receiver}"
 
-    def save(self, *args, **kwargs):
-        if self.sender == self.receiver:
-            raise ValueError("Нельзя отправить запрос самому себе.")
-        if self.is_accepted and self.is_rejected:
-            raise ValueError("Запрос не может быть одновременно принят и отклонён.")
-        super().save(*args, **kwargs)
+    # def save(self, *args, **kwargs):
+    #     if self.sender == self.receiver:
+    #         raise ValueError("Нельзя отправить запрос самому себе.")
+    #     if self.is_accepted and self.is_rejected:
+    #         raise ValueError("Запрос не может быть одновременно принят и отклонён.")
+    #     super().save(*args, **kwargs)
