@@ -222,6 +222,10 @@ class ConflictEventModel(BaseModel):
             "label": "Конфликт отменен",
             "requires": ["initiator"],
         },
+        "conflict_resolved": {
+            "label": "Конфликт разрешен",
+            "requires": ["initiator"],
+        },
         "item_agreed": {
             "label": "Пункт успешно согласован",
             "requires": ["initiator", "item"],

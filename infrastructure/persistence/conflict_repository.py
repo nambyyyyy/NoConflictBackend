@@ -5,8 +5,6 @@ from core.interfaces.conflict_interface import ConflictRepository
 from apps.conflicts.models import ConflictModel
 from typing import Optional
 from uuid import UUID
-from channels.db import database_sync_to_async
-from django.core.exceptions import ObjectDoesNotExist
 
 
 class DjangoConflictRepository(ConflictRepository):
@@ -20,14 +18,12 @@ class DjangoConflictRepository(ConflictRepository):
 
     async def get_by_slug(self, slug: str) -> Optional[Conflict]:
         try:
-            django_conflict = await database_sync_to_async(ConflictModel.objects.get)(
-                slug=slug
-            )
+            django_conflict = await ConflictModel.objects.aget(slug=slug)
             return self._to_entity_conflict(django_conflict)
-        except ObjectDoesNotExist:
+        except ConflictModel.DoesNotExist:
             return None
 
-    def save(
+    async def save(
         self,
         conflict: Conflict,
         update_fields: Optional[list[str]] = None,
@@ -49,8 +45,9 @@ class DjangoConflictRepository(ConflictRepository):
         else:
             defaults = {field: getattr(conflict, field) for field in update_fields}
 
-        django_conflict, _ = ConflictModel.objects.update_or_create(
-            id=conflict.id, defaults=defaults
+        django_conflict, _ = await ConflictModel.objects.aupdate_or_create(
+            id=conflict.id,
+            defaults=defaults,
         )
 
         return self._to_entity_conflict(django_conflict)

@@ -19,7 +19,7 @@ class ConflictRepository(ABC):
         pass
 
     @abstractmethod
-    def save(
+    async def save(
         self,
         conflict: Conflict,
         update_fields: Optional[list[str]] = None,

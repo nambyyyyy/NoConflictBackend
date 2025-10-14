@@ -9,6 +9,7 @@ class ItemRepository(ABC):
     async def save(
         self,
         item: ConflictItem,
+        update_fields: Optional[list[str]] = None
     ) -> ConflictItem:
         """Создать или обновить item конфликта"""
         pass

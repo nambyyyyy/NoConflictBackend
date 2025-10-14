@@ -15,6 +15,7 @@ from core.entities.conflict_event import ConflictEvent
 from application.validators.conflict_validator import ConflictValidator
 from typing import Optional, Callable, Any
 from uuid import UUID
+from datetime import datetime, timezone
 
 
 class ConflictService:
@@ -55,7 +56,7 @@ class ConflictService:
             for item in items
         ]
 
-        with transaction_atomic():
+        async with transaction_atomic():
             saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
             saved_items: list[ConflictItem] = [
                 await self.item_repo.save(item) for item in items_entity
@@ -91,15 +92,20 @@ class ConflictService:
         return self._to_conflict_dto_detail(conflict_entity).to_dict()
 
     async def cancel_conflict(
-        self, user_id: UUID, slug: str, transaction_atomic: Callable
+        self,
+        user_id: UUID,
+        slug: str,
+        transaction_atomic: Callable,
+        channel_layer: Callable,
     ) -> dict[str, Any]:
-        with transaction_atomic():
+        async with transaction_atomic():
             conflict_entity: Optional[Conflict] = await self.conflict_repo.get_by_slug(
                 slug
             )
             self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
             conflict_entity.status = "cancelled"
-            saved_conflict: Conflict = self.conflict_repo.save(
+            conflict_entity.resolved_at = datetime.now(timezone.utc)
+            saved_conflict: Conflict = await self.conflict_repo.save(
                 conflict_entity, update_fields=["status", "resolved_at"]
             )
             await self.event_repo.save(
@@ -107,7 +113,17 @@ class ConflictService:
                 event_type="conflict_cancel",
                 user_id=user_id,
             )
-            return self._to_conflict_dto_schort(saved_conflict).to_dict()
+
+        await channel_layer().group_send(
+            f"conflict_{slug}",
+            {
+                "type": "conflict.cancelled",
+                "status": "cancelled",
+                "resolved_at": saved_conflict.resolved_at.isoformat(),  # type: ignore
+                "initiator_id": str(user_id),
+            },
+        )
+        return self._to_conflict_dto_schort(saved_conflict).to_dict()
 
     async def update_item(
         self,
@@ -122,7 +138,7 @@ class ConflictService:
             event_type, user_id, slug, item_id, new_value
         )
 
-        with transaction_atomic():
+        async with transaction_atomic():
             conflict: Optional[Conflict] = await self.conflict_repo.get_by_slug(slug)
             self.conflict_valid.validate_access_conflict(conflict, user_id)
 
@@ -155,8 +171,39 @@ class ConflictService:
                 item.agreed_choice_value = item.creator_choice_value
                 item.is_agreed = True
 
-            await self.item_repo.save(item)
+                self._update_progress(conflict, item.id)
+                await self.conflict_repo.save(
+                    conflict, update_fields=["progress", "status"]
+                )
+                await self.event_repo.save(
+                    conflict_id=conflict.id,
+                    event_type="conflict_resolved",
+                )
+
+            await self.item_repo.save(
+                item,
+                update_fields=[
+                    "creator_choice_value",
+                    "partner_choice_value",
+                    "agreed_choice_value",
+                    "is_agreed",
+                ],
+            )
             return self._to_item_dto(item).to_dict()
+
+    def _update_progress(self, conflict: Conflict, item_id: UUID) -> None:
+        for index, item in enumerate(conflict.items):
+            if item.id == item_id:
+                conflict.items[index] = item
+                break
+
+        total_items = len(conflict.items)
+        agreed_count = sum(1 for item in conflict.items if item.is_agreed)
+        conflict.progress = (
+            round((agreed_count / total_items) * 100, 2) if total_items else 0.0
+        )
+        if conflict.progress >= 100:
+            conflict.status = "resolved"
 
     def _to_conflict_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
         items: list[dict] = [

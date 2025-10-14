@@ -5,8 +5,6 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from presentation.dependencies.service_factories import get_conflict_service
 from application.services.conflict_service import ConflictService
 from core.entities.conflict import ConflictError
-from application.dtos.conflict_dto import ConflictItemDTO
-from rest_framework.response import Response
 
 
 class ConflictConsumer(AsyncWebsocketConsumer):
@@ -55,22 +53,26 @@ class ConflictConsumer(AsyncWebsocketConsumer):
                 text_data=json.dumps({"error": "Допустимо только update_item событие"})
             )
 
-        user_id = data.pop("user_id", None)
-        slug = data.pop("slug", None)
-        item_id = data.pop("item_id", None)
-        new_value = data.pop("new_value", None)
-
         try:
             conflict_service: ConflictService = get_conflict_service()
             item_dto: dict[str, Any] = await conflict_service.update_item(
-                event_type, user_id, slug, item_id, new_value, transaction.atomic
+                event_type,
+                data.pop("user_id", None),
+                data.pop("slug", None),
+                data.pop("item_id", None),
+                data.pop("new_value", None),
+                transaction.atomic,
             )
-            # Откорректировать
-            return Response(item_dto, status=201)
-        except Exception:
-            # Дописать
-            pass
+            await self.send(text_data=json.dumps({
+                "type": "item_updated",
+                "data": item_dto
+            }))
+        except Exception as e:
+            await self.send(text_data=json.dumps({"error": str(e)}))
 
-    # async def send_update(self, event):
-    #     data = event["data"]
-    #     await self.send(text_data=json.dumps(data))
+    async def conflict_cancelled(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "conflict_cancel",
+            "status": event["status"],
+            "resolved_at": event["resolved_at"],
+        }))
