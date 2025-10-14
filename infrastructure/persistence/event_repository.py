@@ -3,11 +3,12 @@ from core.interfaces.event_interface import EventRepository
 from apps.conflicts.models import ConflictEventModel
 from uuid import UUID
 from typing import Optional
+from channels.db import database_sync_to_async
 
 
 class DjangoEventRepository(EventRepository):
 
-    def save(
+    async def save(
         self,
         conflict_id: UUID,
         event_type: str,
@@ -16,7 +17,7 @@ class DjangoEventRepository(EventRepository):
         old_value: Optional[str] = None,
         new_value: Optional[str] = None,
     ) -> ConflictEvent:
-        django_event = ConflictEventModel.objects.create(
+        django_event = await database_sync_to_async(ConflictEventModel.objects.create)(
             conflict_id=conflict_id,
             item_id=item_id,
             initiator_id=user_id,

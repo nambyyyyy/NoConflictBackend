@@ -7,7 +7,7 @@ from typing import Optional
 class EventRepository(ABC):
 
     @abstractmethod
-    def save(
+    async def save(
         self,
         conflict_id: UUID,
         event_type: str,

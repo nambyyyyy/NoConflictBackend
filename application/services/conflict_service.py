@@ -12,7 +12,7 @@ from core.entities.conflict import Conflict, ConflictError
 from core.entities.conflict_item import ConflictItem
 from core.entities.conflict_event import ConflictEvent
 from typing import Any, Optional, Callable
-from uuid import uuid4, UUID
+from uuid import UUID
 
 
 class ConflictService:
@@ -26,29 +26,19 @@ class ConflictService:
         self.item_repo = item_repository
         self.event_repo = event_repository
 
-    def get_conflict(self, user_id: UUID, slug: str) -> ConflictDetailDTO:
-        conflict_entity: Conflict = self.conflict_repo.get_by_slug(slug)
-        self._validate_access_conflict(conflict_entity, user_id)
-        return self._to_conflict_dto_detail(conflict_entity)
-
-    def create_conflict(
+    async def create_conflict(
         self,
         creator_id: UUID,
-        validated_data: dict[str, Any],
+        partner_id: Optional[UUID],
+        title: str,
+        items: list[dict],
         transaction_atomic: Callable,
     ) -> ConflictDetailDTO:
 
-        self._validate_conflict_registration(
-            creator_id,
-            validated_data.get("partner_id"),
-            validated_data.get("title"),
-            validated_data.get("items"),
-        )
+        self._validate_conflict_registration(creator_id, partner_id, title, items)
 
         conflict_entity: Conflict = Conflict(
-            creator_id=creator_id,
-            partner_id=validated_data.get("partner_id"),
-            title=validated_data.get("title"), # type: ignore
+            creator_id=creator_id, partner_id=partner_id, title=title
         )
         items_entity: list[ConflictItem] = [
             ConflictItem(
@@ -57,19 +47,17 @@ class ConflictService:
                 title=item.get("title"),  # type: ignore
                 creator_choice_value=item.get("creator_choice_value"),
             )
-            for item in validated_data.get("items") # type: ignore
+            for item in items
         ]
 
         with transaction_atomic():
-            saved_conflict: Conflict = self.conflict_repo.save(
-                conflict_entity, creator_id
-            )
+            saved_conflict: Conflict = self.conflict_repo.save(conflict_entity)
             saved_items: list[ConflictItem] = [
-                self.item_repo.save(item) for item in items_entity
+                await self.item_repo.save(item) for item in items_entity
             ]
 
             saved_events: list[ConflictEvent] = []
-            event_create = self.event_repo.save(
+            event_create = await self.event_repo.save(
                 conflict_id=saved_conflict.id,
                 event_type="conflict_create",
                 user_id=saved_conflict.creator_id,
@@ -78,7 +66,7 @@ class ConflictService:
 
             for item in saved_items:
                 saved_events.append(
-                    self.event_repo.save(
+                    await self.event_repo.save(
                         conflict_id=saved_conflict.id,
                         event_type="item_add",
                         user_id=saved_conflict.creator_id,
@@ -90,7 +78,59 @@ class ConflictService:
             saved_conflict.items = saved_items
             saved_conflict.events = saved_events
 
-        return self._to_conflict_dto_detail(saved_conflict)
+            return self._to_conflict_dto_detail(saved_conflict)
+
+    async def get_conflict(self, user_id: UUID, slug: str) -> ConflictDetailDTO:
+        conflict_entity: Optional[Conflict] = await self.conflict_repo.get_by_slug(slug)
+        self._validate_access_conflict(conflict_entity, user_id)
+        return self._to_conflict_dto_detail(conflict_entity)
+
+    async def update_item(
+        self,
+        event_type: str,
+        user_id: UUID,
+        slug: str,
+        item_id: UUID,
+        new_value: str,
+        transaction_atomic: Callable,
+    ) -> ConflictItemDTO:
+        self._validate_item_update(event_type, user_id, slug, item_id, new_value)
+
+        with transaction_atomic():
+            conflict: Optional[Conflict] = await self.conflict_repo.get_by_slug(slug)
+            self._validate_access_conflict(conflict, user_id)
+
+            item: Optional[ConflictItem] = await self.item_repo.get_by_id_and_conflict_id(
+                item_id, conflict.id
+            )
+            
+            if item is None:
+                raise ConflictError("Item Not Found")
+
+            if user_id == conflict.creator_id:
+                old_value = item.creator_choice_value
+                item.creator_choice_value = new_value
+            else:
+                old_value = item.partner_choice_value
+                item.partner_choice_value = new_value
+
+            await self.event_repo.save(
+                conflict_id=conflict.id,
+                event_type=event_type,
+                user_id=user_id,
+                item_id=item.id,
+                old_value=old_value,
+                new_value=new_value,
+            )
+
+            if (item.creator_choice_value and item.partner_choice_value) and (
+                item.creator_choice_value == item.partner_choice_value
+            ):
+                item.agreed_choice_value = item.creator_choice_value
+                item.is_agreed = True
+
+            await self.item_repo.save(item)
+            return self._to_item_dto(item) 
 
     def _validate_conflict_registration(
         self,
@@ -112,10 +152,30 @@ class ConflictService:
             raise ConflictError("Для создания конфликта нужен минимум один пункт")
 
         for item in items:
+            if not item["id"]:
+                raise ConflictError("У item нет id")
             if not item["title"]:
                 raise ConflictError("У item нет title")
             if not item["creator_choice_value"]:
                 raise ConflictError("У item нет creator_choice_value")
+
+    def _validate_item_update(
+        self, event_type: str, user_id: UUID, slug: str, item_id: UUID, new_value: str
+    ):
+        if not event_type or not isinstance(event_type, str):
+            raise ValueError("Event type is required and must be a string")
+        
+        if not slug or not isinstance(slug, str):
+            raise ValueError("Conflict slug is required and must be a string")
+
+        if not new_value or not isinstance(new_value, str):
+            raise ValueError("New value is required and must be a non-empty string")
+
+        if not item_id:
+            raise ValueError("Item ID is required")
+
+        if not user_id:
+            raise ValueError("User ID is required")
 
     def _validate_access_conflict(
         self, conflict: Optional[Conflict], user_id: UUID

@@ -230,6 +230,10 @@ class ConflictEventModel(BaseModel):
             "label": "Пункт успешно добавлен",
             "requires": ["initiator"],
         },
+        "item_update": {
+            "label": "Пункт успешно изменен",
+            "requires": ["initiator"],
+        },
         "conflict_join_success": {
             "label": "Пользователь успешно присоединился",
             "requires": ["initiator"],

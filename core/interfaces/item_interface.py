@@ -1,13 +1,21 @@
 from abc import ABC, abstractmethod
 from core.entities.conflict_item import ConflictItem
+from typing import Optional
 from uuid import UUID
 
 class ItemRepository(ABC):
 
     @abstractmethod
-    def save(
+    async def save(
         self,
         item: ConflictItem,
     ) -> ConflictItem:
         """Создать или обновить item конфликта"""
+        pass
+
+    @abstractmethod
+    async def get_by_id_and_conflict_id(
+        self, item_id: UUID, conflict_id: UUID
+    ) -> Optional[ConflictItem]:
+        """Найти конфликт по item_id и conflict_id"""
         pass

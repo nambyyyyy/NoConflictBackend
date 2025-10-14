@@ -5,6 +5,8 @@ from core.interfaces.conflict_interface import ConflictRepository
 from apps.conflicts.models import ConflictModel
 from typing import Optional
 from uuid import UUID
+from channels.db import database_sync_to_async
+from django.core.exceptions import ObjectDoesNotExist
 
 
 class DjangoConflictRepository(ConflictRepository):
@@ -15,26 +17,25 @@ class DjangoConflictRepository(ConflictRepository):
             return self._to_entity_conflict(django_conflict)
         except ConflictModel.DoesNotExist:
             return None
-    
-    def get_by_slug(self, slug: str) -> Optional[Conflict]:
+
+    async def get_by_slug(self, slug: str) -> Optional[Conflict]:
         try:
-            django_conflict = ConflictModel.objects.get(slug=slug)
+            django_conflict = await database_sync_to_async(ConflictModel.objects.get)(
+                slug=slug
+            )
             return self._to_entity_conflict(django_conflict)
-        except ConflictModel.DoesNotExist:
-            return None 
-    
+        except ObjectDoesNotExist:
+            return None
+
     def save(
         self,
         conflict: Conflict,
-        creator_id: UUID,
-        partner_id: Optional[UUID] = None,
-        truce_initiator_id: Optional[UUID] = None,
     ) -> Conflict:
         django_conflict, _ = ConflictModel.objects.update_or_create(
             id=conflict.id,
             defaults={
-                "creator_id": creator_id,
-                "partner_id": partner_id,
+                "creator_id": conflict.creator_id,
+                "partner_id": conflict.partner_id,
                 "title": conflict.title,
                 "status": conflict.status,
                 "slug": conflict.slug,
@@ -43,12 +44,12 @@ class DjangoConflictRepository(ConflictRepository):
                 "deleted_by_creator": conflict.deleted_by_creator,
                 "deleted_by_partner": conflict.deleted_by_partner,
                 "truce_status": conflict.truce_status,
-                "truce_initiator_id": truce_initiator_id,
+                "truce_initiator_id": conflict.truce_initiator_id,
             },
         )
-        
+
         return self._to_entity_conflict(django_conflict)
-    
+
     def _to_entity_items(self, django_conflict: ConflictModel) -> list[ConflictItem]:
         items_data = [
             ConflictItem(
@@ -60,10 +61,10 @@ class DjangoConflictRepository(ConflictRepository):
                 agreed_choice_value=item.agreed_choice_value,
                 is_agreed=item.is_agreed,
             )
-            for item in django_conflict.items.all() # type: ignore
+            for item in django_conflict.items.all()  # type: ignore
         ]
         return items_data
-    
+
     def _to_entity_events(self, django_conflict: ConflictModel) -> list[ConflictEvent]:
         events_data = [
             ConflictEvent(
@@ -79,7 +80,7 @@ class DjangoConflictRepository(ConflictRepository):
                 old_value=event.old_value,
                 new_value=event.new_value,
             )
-            for event in django_conflict.events.all() # type: ignore
+            for event in django_conflict.events.all()  # type: ignore
         ]
         return events_data
 

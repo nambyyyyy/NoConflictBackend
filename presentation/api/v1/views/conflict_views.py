@@ -14,11 +14,11 @@ from django.db import transaction
 class ConflictView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, slug):
+    async def get(self, request, slug):
         conflict_service: ConflictService = get_conflict_service()
 
         try:
-            conflict_dto: ConflictDetailDTO = conflict_service.get_conflict(
+            conflict_dto: ConflictDetailDTO = await conflict_service.get_conflict(
                 request.user.id, slug
             )
             response_data = conflict_dto.__dict__
@@ -42,10 +42,14 @@ class CreateConflictView(APIView):
 
         # Получаем сервис (Application Layer)
         conflict_service: ConflictService = get_conflict_service()
+        creator_id = request.user.id
+        partner_id = validated_data.pop("partner_id", None)
+        title = validated_data.pop("title", None)
+        items = validated_data.pop("items", None)
 
         try:
             conflict_dto: ConflictDetailDTO = conflict_service.create_conflict(
-                request.user.id, validated_data, transaction.atomic
+                creator_id, partner_id, title, items, transaction.atomic
             )
             return Response(conflict_dto.__dict__, status=201)
 

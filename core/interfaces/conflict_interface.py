@@ -14,7 +14,7 @@ class ConflictRepository(ABC):
         pass
     
     @abstractmethod
-    def get_by_slug(self, slug: str) -> Conflict:
+    async def get_by_slug(self, slug: str) -> Conflict:
         """Вернуть Conflict по slug"""
         pass
 
@@ -22,9 +22,6 @@ class ConflictRepository(ABC):
     def save(
         self,
         conflict: Conflict,
-        creator_id: UUID,
-        partner_id: Optional[UUID] = None,
-        truce_initiator_id: Optional[UUID] = None,
     ) -> Conflict:
         """Создать или обновить конфликт"""
         pass
