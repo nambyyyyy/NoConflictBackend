@@ -89,3 +89,25 @@ class ConflictDetailDTO(BaseConflictDTO):
             "items": self.items,
             "events": self.events,
         }
+
+
+@dataclass
+class ConflictShortDTO(BaseConflictDTO):
+    id: UUID
+    creator_id: UUID
+    partner_id: Optional[UUID]
+    title: Optional[str]
+    status: str
+    progress: float
+    resolved_at: Optional[datetime]
+
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "creator_id": str(self.creator_id),
+            "partner_id": str(self.partner_id),
+            "title": self.title,
+            "status": self.status,
+            "progress": self.progress,
+            "resolved_at": self.resolved_at.isoformat() if self.resolved_at else None,
+        }

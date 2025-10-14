@@ -2,7 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
 from uuid import uuid4, UUID
-
+from core.entities.conflict_item import ConflictItem
+from core.entities.conflict_event import ConflictEvent
 
 class ConflictError(Exception):
     """Любая доменная ошибка по конфликтам."""

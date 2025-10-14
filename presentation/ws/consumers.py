@@ -10,6 +10,7 @@ from rest_framework.response import Response
 
 
 class ConflictConsumer(AsyncWebsocketConsumer):
+
     async def connect(self):
         # Получаем slug из URL
         self.slug = self.scope["url_route"]["kwargs"]["slug"]  # type: ignore
@@ -49,6 +50,11 @@ class ConflictConsumer(AsyncWebsocketConsumer):
             return
 
         event_type = data.pop("event_type", None)
+        if event_type != "update_item":
+            await self.send(
+                text_data=json.dumps({"error": "Допустимо только update_item событие"})
+            )
+
         user_id = data.pop("user_id", None)
         slug = data.pop("slug", None)
         item_id = data.pop("item_id", None)
@@ -56,11 +62,11 @@ class ConflictConsumer(AsyncWebsocketConsumer):
 
         try:
             conflict_service: ConflictService = get_conflict_service()
-            item_dto: ConflictItemDTO = await conflict_service.update_item(
+            item_dto: dict[str, Any] = await conflict_service.update_item(
                 event_type, user_id, slug, item_id, new_value, transaction.atomic
             )
             # Откорректировать
-            return Response(item_dto.__dict__, status=201)
+            return Response(item_dto, status=201)
         except Exception:
             # Дописать
             pass

@@ -22,6 +22,7 @@ class ConflictRepository(ABC):
     def save(
         self,
         conflict: Conflict,
+        update_fields: Optional[list[str]] = None,
     ) -> Conflict:
         """Создать или обновить конфликт"""
         pass

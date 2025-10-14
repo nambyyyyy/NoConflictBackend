@@ -30,10 +30,10 @@ class DjangoConflictRepository(ConflictRepository):
     def save(
         self,
         conflict: Conflict,
+        update_fields: Optional[list[str]] = None,
     ) -> Conflict:
-        django_conflict, _ = ConflictModel.objects.update_or_create(
-            id=conflict.id,
-            defaults={
+        if update_fields is None:
+            defaults = {
                 "creator_id": conflict.creator_id,
                 "partner_id": conflict.partner_id,
                 "title": conflict.title,
@@ -45,7 +45,12 @@ class DjangoConflictRepository(ConflictRepository):
                 "deleted_by_partner": conflict.deleted_by_partner,
                 "truce_status": conflict.truce_status,
                 "truce_initiator_id": conflict.truce_initiator_id,
-            },
+            }
+        else:
+            defaults = {field: getattr(conflict, field) for field in update_fields}
+
+        django_conflict, _ = ConflictModel.objects.update_or_create(
+            id=conflict.id, defaults=defaults
         )
 
         return self._to_entity_conflict(django_conflict)

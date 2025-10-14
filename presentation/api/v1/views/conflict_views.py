@@ -18,12 +18,11 @@ class ConflictView(APIView):
         conflict_service: ConflictService = get_conflict_service()
 
         try:
-            conflict_dto: ConflictDetailDTO = await conflict_service.get_conflict(
+            conflict_dto: dict[str, Any] = await conflict_service.get_conflict(
                 request.user.id, slug
             )
-            response_data = conflict_dto.__dict__
-            response_data["ws_url"] = f"/ws/conflicts/{slug}/"
-            return Response(response_data, status=200)
+            conflict_dto["ws_url"] = f"/ws/conflicts/{slug}/"
+            return Response(conflict_dto, status=200)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
         except Exception as e:
@@ -33,7 +32,7 @@ class ConflictView(APIView):
 class CreateConflictView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    async def post(self, request):
         serializer = CreateConflictSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -48,11 +47,29 @@ class CreateConflictView(APIView):
         items = validated_data.pop("items", None)
 
         try:
-            conflict_dto: ConflictDetailDTO = conflict_service.create_conflict(
+            conflict_dto: dict[str, Any] = await conflict_service.create_conflict(
                 creator_id, partner_id, title, items, transaction.atomic
             )
             return Response(conflict_dto.__dict__, status=201)
 
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            return Response({"error": "Internal server error"}, status=500)
+
+
+class CancelConflictView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    async def post(self, request, slug):
+        conflict_service: ConflictService = get_conflict_service()
+        
+        try:
+            conflict_dto: dict[str, Any] = await conflict_service.cancel_conflict(
+                request.user.id, slug, transaction.atomic
+            )
+            conflict_dto["ws_url"] = f"/ws/conflicts/{slug}/"
+            return Response(conflict_dto, status=201)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
         except Exception as e:

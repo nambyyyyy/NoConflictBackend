@@ -58,6 +58,6 @@ def get_conflict_service() -> ConflictService:
     return ConflictService(
         conflict_repository=DjangoConflictRepository(),
         item_repository=DjangotItemRepository(),
-        event_repository=DjangoEventRepository()
+        event_repository=DjangoEventRepository(),
         
     )
