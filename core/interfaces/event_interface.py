@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from core.entities.conflict_event import ConflictEvent
-from uuid import UUID
-from typing import Optional
 
 
 class EventRepository(ABC):
@@ -9,12 +7,7 @@ class EventRepository(ABC):
     @abstractmethod
     async def save(
         self,
-        conflict_id: UUID,
-        event_type: str,
-        user_id: Optional[UUID] = None,
-        item_id: Optional[UUID] = None,
-        old_value: Optional[str] = None,
-        new_value: Optional[str] = None
+        event: ConflictEvent
     ) -> ConflictEvent:
         """Создать или обновить event конфликта"""
         pass

@@ -7,9 +7,14 @@ T = TypeVar("T")
 
 
 class ConflictRepository(ABC):
+    
+    @abstractmethod
+    async def _base_get(self, filter: UUID | str) -> Conflict:
+        """Базовый метод извлечения полного конфликта"""
+        pass
 
     @abstractmethod
-    def get_by_id(self, conflict_id: UUID) -> Conflict:
+    async def get_by_id(self, conflict_id: UUID) -> Conflict:
         """Вернуть Conflict по conflict_id"""
         pass
     
@@ -26,5 +31,9 @@ class ConflictRepository(ABC):
     ) -> Conflict:
         """Создать или обновить конфликт"""
         pass
+    
+
+    
+        
 
 

@@ -38,8 +38,10 @@ class ConflictEventDTO(BaseConflictDTO):
     id: UUID
     event_type: str
     created_at: datetime
-    initiator: Optional[dict[str, Any]]
+    initiator_id: Optional[UUID]
+    initiator_username: Optional[str]
     item_id: Optional[UUID]
+    item_title: Optional[str]
     old_value: Optional[str]
     new_value: Optional[str]
 
@@ -48,8 +50,10 @@ class ConflictEventDTO(BaseConflictDTO):
             "id": str(self.id),
             "event_type": self.event_type,
             "created_at": self.created_at.isoformat(),
-            "initiator": self.initiator,
+            "initiator_id": str(self.initiator_id) if str(self.initiator_id) else None,
+            "initiator_username": self.initiator_username,
             "item_id": str(self.item_id) if self.item_id else None,
+            "item_title": self.item_title,
             "old_value": self.old_value,
             "new_value": self.new_value,
         }
@@ -59,7 +63,9 @@ class ConflictEventDTO(BaseConflictDTO):
 class ConflictDetailDTO(BaseConflictDTO):
     id: UUID
     creator_id: UUID
+    creator_username: Optional[str]
     partner_id: Optional[UUID]
+    partner_username: Optional[str]
     title: Optional[str]
     status: str
     slug: str
@@ -68,6 +74,7 @@ class ConflictDetailDTO(BaseConflictDTO):
     resolved_at: Optional[datetime]
     truce_status: str
     truce_initiator_id: Optional[UUID]
+    truce_initiator_username: Optional[str]
     items: list[dict]
     events: list[dict]
 
@@ -75,7 +82,9 @@ class ConflictDetailDTO(BaseConflictDTO):
         return {
             "id": str(self.id),
             "creator_id": str(self.creator_id),
+            "creator_username": self.creator_username,
             "partner_id": str(self.partner_id),
+            "partner_username": self.partner_username,
             "title": self.title,
             "status": self.status,
             "slug": self.slug,
@@ -86,6 +95,7 @@ class ConflictDetailDTO(BaseConflictDTO):
             "truce_initiator_id": (
                 str(self.truce_initiator_id) if self.truce_initiator_id else None
             ),
+            "truce_initiator_username": self.truce_initiator_username,
             "items": self.items,
             "events": self.events,
         }
@@ -95,7 +105,9 @@ class ConflictDetailDTO(BaseConflictDTO):
 class ConflictShortDTO(BaseConflictDTO):
     id: UUID
     creator_id: UUID
+    creator_username: str
     partner_id: Optional[UUID]
+    partner_username: Optional[str]
     title: Optional[str]
     status: str
     progress: float
@@ -105,7 +117,9 @@ class ConflictShortDTO(BaseConflictDTO):
         return {
             "id": str(self.id),
             "creator_id": str(self.creator_id),
-            "partner_id": str(self.partner_id),
+            "creator_username": self.creator_username,
+            "partner_id": str(self.partner_id) if self.partner_id else None,
+            "partner_username": self.partner_username,
             "title": self.title,
             "status": self.status,
             "progress": self.progress,

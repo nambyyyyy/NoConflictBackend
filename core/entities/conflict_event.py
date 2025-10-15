@@ -1,17 +1,19 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
-from uuid import UUID
+from uuid import UUID, uuid4
 from datetime import datetime
 
 
 @dataclass
 class ConflictEvent:
-    id: UUID
     conflict_id: UUID
-    created_at: datetime
     event_type: str
-    initiator: Optional[dict] = None
+    id: UUID = field(default_factory=uuid4)
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    initiator_id: Optional[UUID] = None
+    initiator_username: Optional[str] = None
     item_id: Optional[UUID] = None
+    item_title: Optional[str] = None
     old_value: Optional[str] = None
     new_value: Optional[str] = None
     

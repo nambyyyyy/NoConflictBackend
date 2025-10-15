@@ -7,37 +7,32 @@ from typing import Optional
 
 class DjangoEventRepository(EventRepository):
 
-    async def save(
-        self,
-        conflict_id: UUID,
-        event_type: str,
-        user_id: Optional[UUID] = None,
-        item_id: Optional[UUID] = None,
-        old_value: Optional[str] = None,
-        new_value: Optional[str] = None,
-    ) -> ConflictEvent:
+    async def save(self, event: ConflictEvent) -> ConflictEvent:
         django_event = await ConflictEventModel.objects.acreate(
-            conflict_id=conflict_id,
-            item_id=item_id,
-            initiator_id=user_id,
-            event_type=event_type,
-            old_value=old_value,
-            new_value=new_value,
+            conflict_id=event.conflict_id,
+            item_id=event.item_id,
+            initiator_id=event.initiator_id,
+            event_type=event.event_type,
+            old_value=event.old_value,
+            new_value=event.new_value,
         )
+        django_event_with_initiator = await ConflictEventModel.objects.select_related(
+            "initiator"
+        ).aget(id=django_event.id)
 
-        return self._to_entity(django_event)
+        return self._to_entity(django_event_with_initiator)
 
     def _to_entity(self, django_event: ConflictEventModel) -> ConflictEvent:
         return ConflictEvent(
             id=django_event.id,
             conflict_id=django_event.conflict_id,
             created_at=django_event.created_at,
-            initiator=(
-                {
-                    "id": django_event.initiator.id,
-                    "username": django_event.initiator.username,
-                }
-                if django_event.initiator
+            initiator_id=(
+                django_event.initiator.id if django_event.initiator.id else None
+            ),
+            initiator_username=(
+                django_event.initiator.username
+                if django_event.initiator.username
                 else None
             ),
             event_type=django_event.event_type,

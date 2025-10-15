@@ -13,7 +13,9 @@ class ConflictError(Exception):
 class Conflict:
     title: str
     creator_id: UUID
+    creator_username: Optional[str] = None
     partner_id: Optional[UUID] = None 
+    partner_username: Optional[str] = None
     
     id: UUID = field(default_factory=uuid4)
     status: str = "pending"  # pending / in_progress / resolved / cancelled / abandoned
@@ -28,6 +30,7 @@ class Conflict:
 
     truce_status: str = "none"  # none / pending / accepted
     truce_initiator_id: Optional[UUID] = None
+    truce_initiator_username: Optional[str] = None
 
     items: list["ConflictItem"] = field(default_factory=list)
     events: list["ConflictEvent"] = field(default_factory=list)

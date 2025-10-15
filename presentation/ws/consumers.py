@@ -75,4 +75,6 @@ class ConflictConsumer(AsyncWebsocketConsumer):
             "type": "conflict_cancel",
             "status": event["status"],
             "resolved_at": event["resolved_at"],
+            "progress": event["progress"],
+            "initiator_id": event["initiator_id"],
         }))
