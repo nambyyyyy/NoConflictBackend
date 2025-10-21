@@ -94,7 +94,7 @@ class DjangoConflictRepository(ConflictRepository):
                 old_value=event.old_value,
                 new_value=event.new_value,
             )
-            for event in django_conflict.events.all()
+            for event in django_conflict.events.all()  # type: ignore
         ]
         return events_data
 
@@ -134,3 +134,4 @@ class DjangoConflictRepository(ConflictRepository):
             items=self._to_entity_items(django_conflict),
             events=self._to_entity_events(django_conflict),
         )
+
