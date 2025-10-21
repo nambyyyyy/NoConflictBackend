@@ -10,9 +10,7 @@ from uuid import UUID
 
 class DjangoConflictRepository(ConflictRepository):
 
-    async def _base_get(
-        self, lookup_field: str, lookup_value: UUID | str
-    ) -> Conflict:
+    async def _base_get(self, lookup_field: str, lookup_value: UUID | str) -> Conflict:
         django_conflict = await (
             ConflictModel.objects.select_related(
                 "creator", "partner", "truce_initiator"
@@ -59,14 +57,11 @@ class DjangoConflictRepository(ConflictRepository):
         else:
             defaults = {field: getattr(conflict, field) for field in update_fields}
 
-
         django_conflict, _ = await ConflictModel.objects.aupdate_or_create(
-                id=conflict.id,
-                defaults=defaults,
-            )
+            id=conflict.id,
+            defaults=defaults,
+        )
         return await self._base_get("id", django_conflict.id)
-  
-
 
     def _to_entity_items(self, django_conflict: ConflictModel) -> list[ConflictItem]:
         items_data = [
@@ -105,7 +100,6 @@ class DjangoConflictRepository(ConflictRepository):
 
     def _to_entity_conflict(self, django_conflict: ConflictModel) -> Conflict:
         """Приватный метод конвертации"""
-
         return Conflict(
             id=django_conflict.id,
             creator_id=django_conflict.creator.id,

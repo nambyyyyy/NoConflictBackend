@@ -74,3 +74,40 @@ class CancelConflictView(APIView):
             return Response({"error": str(e)}, status=400)
         except Exception as e:
             return Response({"error": "Internal server error"}, status=500)
+
+
+class CreateOfferTruceView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    async def post(self, request, slug):
+        conflict_service: ConflictService = get_conflict_service()
+        
+        try:
+
+            conflict_dto: dict[str, Any] = await conflict_service.create_offer_truce(
+                request.user.id, slug, transaction.atomic, get_channel_layer
+            )
+            conflict_dto["ws_url"] = f"/ws/conflicts/{slug}/"
+            return Response(conflict_dto, status=201)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            return Response({"error": "Internal server error"}, status=500)
+
+
+class CancelOfferTruce(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    async def post(self, request, slug):
+        conflict_service: ConflictService = get_conflict_service()
+        
+        try:
+            conflict_dto: dict[str, Any] = await conflict_service.cancel_offer_truce(
+                request.user.id, slug, transaction.atomic, get_channel_layer
+            )
+            conflict_dto["ws_url"] = f"/ws/conflicts/{slug}/"
+            return Response(conflict_dto, status=201)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            return Response({"error": "Internal server error"}, status=500)

@@ -202,7 +202,7 @@ class ConflictItemModel(IsDeletedModel):
 
 class ConflictEventModel(BaseModel):
     EVENT_META = {
-        "truce_proposed": {
+        "truce_offer": {
             "label": "Предложено перемирие",
             "requires": ["initiator"],
         },

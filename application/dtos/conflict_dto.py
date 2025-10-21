@@ -105,7 +105,7 @@ class ConflictDetailDTO(BaseConflictDTO):
 class ConflictShortDTO(BaseConflictDTO):
     id: UUID
     creator_id: UUID
-    creator_username: str
+    creator_username: Optional[str]
     partner_id: Optional[UUID]
     partner_username: Optional[str]
     title: Optional[str]

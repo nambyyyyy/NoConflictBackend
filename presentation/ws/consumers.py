@@ -60,6 +60,7 @@ class ConflictConsumer(AsyncWebsocketConsumer):
                 data.pop("user_id", None),
                 data.pop("slug", None),
                 data.pop("item_id", None),
+                data.pop("item_title", None),
                 data.pop("new_value", None),
                 transaction.atomic,
             )
@@ -77,4 +78,12 @@ class ConflictConsumer(AsyncWebsocketConsumer):
             "resolved_at": event["resolved_at"],
             "progress": event["progress"],
             "initiator_id": event["initiator_id"],
+            "initiator_username": event["initiator_username"]
+        }))
+    
+    async def conflict_truce_offer(self, event):
+        await self.send(text_data=json.dumps({
+            "type": "truce_offer",
+            "initiator_id": event["initiator_id"],
+            "initiator_username": event["initiator_username"]
         }))

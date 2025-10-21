@@ -1,8 +1,6 @@
 from core.entities.conflict_event import ConflictEvent
 from core.interfaces.event_interface import EventRepository
 from apps.conflicts.models import ConflictEventModel
-from uuid import UUID
-from typing import Optional
 
 
 class DjangoEventRepository(EventRepository):

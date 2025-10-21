@@ -16,6 +16,7 @@ from application.validators.conflict_validator import ConflictValidator
 from typing import Optional, Callable, Any
 from uuid import UUID
 from datetime import datetime, timezone
+from dataclasses import asdict
 
 
 class ConflictService:
@@ -46,7 +47,7 @@ class ConflictService:
         conflict_entity: Conflict = Conflict(
             creator_id=creator_id, partner_id=partner_id, title=title
         )
-        items_entity: list[ConflictItem] = [
+        items_entitys: list[ConflictItem] = [
             ConflictItem(
                 id=item.get("id"),  # type: ignore
                 conflict_id=conflict_entity.id,
@@ -55,38 +56,33 @@ class ConflictService:
             )
             for item in items
         ]
+        saved_events: list[ConflictEvent] = []
+        event_entity: ConflictEvent = ConflictEvent(
+            conflict_id=conflict_entity.id,
+            event_type="conflict_create",
+            initiator_id=conflict_entity.creator_id,
+            initiator_username=conflict_entity.creator_username,
+        )
+        saved_events.append(event_entity)
 
-        async with transaction_atomic():
-            saved_conflict: Conflict = await self.conflict_repo.save(conflict_entity)
-            saved_items: list[ConflictItem] = [
-                await self.item_repo.save(item) for item in items_entity
-            ]
-            saved_events: list[ConflictEvent] = []
-
-            event_entity: ConflictEvent = ConflictEvent(
-                conflict_id=saved_conflict.id,
-                event_type="conflict_create",
-                initiator_id=saved_conflict.creator_id,
-                initiator_username=saved_conflict.creator_username,
-            )
-            saved_event = await self.event_repo.save(event_entity)
-            saved_events.append(saved_event)
-
-            for item in saved_items:
-                event_entity: ConflictEvent = ConflictEvent(
-                    conflict_id=saved_conflict.id,
+        for item in items_entitys:
+            saved_events.append(
+                ConflictEvent(
+                    conflict_id=conflict_entity.id,
                     event_type="item_add",
-                    initiator_id=saved_conflict.creator_id,
-                    initiator_username=saved_conflict.creator_username,
                     item_id=item.id,
                     item_title=item.title,
-                    new_value=item.creator_choice_value,
+                    initiator_id=conflict_entity.creator_id,
+                    initiator_username=conflict_entity.creator_username,
                 )
-                saved_event = await self.event_repo.save(event_entity)
-                saved_events.append(saved_event)
+            )
 
-            saved_conflict.items = saved_items
-            saved_conflict.events = saved_events
+        async with transaction_atomic():
+            for event in saved_events:
+                await self.event_repo.save(event)
+            for item in items_entitys:
+                await self.item_repo.save(item)
+            saved_conflict: Conflict = await self.conflict_repo.save(conflict_entity)
 
             return self._to_conflict_dto_detail(saved_conflict).to_dict()
 
@@ -107,16 +103,25 @@ class ConflictService:
                 slug
             )
             self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
+
+            event_entity: ConflictEvent = ConflictEvent(
+                conflict_id=conflict_entity.id,
+                event_type="conflict_cancel",
+                initiator_id=user_id,
+                initiator_username=(
+                    conflict_entity.creator_username
+                    if conflict_entity.partner_username == user_id
+                    else conflict_entity.partner_username
+                ),
+            )
+            await self.event_repo.save(event_entity)
+
             conflict_entity.status = "cancelled"
             conflict_entity.resolved_at = datetime.now(timezone.utc)
+
             saved_conflict: Conflict = await self.conflict_repo.save(
                 conflict_entity, update_fields=["status", "resolved_at"]
             )
-            # await self.event_repo.save(
-            #     conflict_id=saved_conflict.id,
-            #     event_type="conflict_cancel",
-            #     user_id=user_id,
-            # )
 
         await channel_layer().group_send(
             f"conflict_{slug}",
@@ -125,10 +130,44 @@ class ConflictService:
                 "status": "cancelled",
                 "progress": saved_conflict.progress,
                 "resolved_at": saved_conflict.resolved_at.isoformat(),  # type: ignore
-                "initiator_id": str(user_id),
+                "initiator_id": event_entity.initiator_id,
+                "initiator_username": event_entity.initiator_username,
             },
         )
         return self._to_conflict_dto_schort(saved_conflict).to_dict()
+
+    async def create_offer_truce(
+        self,
+        user_id: UUID,
+        slug: str,
+        transaction_atomic: Callable,
+        channel_layer: Callable,
+    ) -> dict[str, Any]: # type: ignore
+        await self._update_offer_truce(
+            user_id, slug, transaction_atomic, channel_layer, "none", "pending"
+        )
+
+    async def cancel_offer_truce(
+        self,
+        user_id: UUID,
+        slug: str,
+        transaction_atomic: Callable,
+        channel_layer: Callable,
+    ) -> dict[str, Any]: # type: ignore
+        await self._update_offer_truce(
+            user_id, slug, transaction_atomic, channel_layer, "pending", "none"
+        )
+
+    async def accepted_offer_truce(
+        self,
+        user_id: UUID,
+        slug: str,
+        transaction_atomic: Callable,
+        channel_layer: Callable,
+    ) -> dict[str, Any]: # type: ignore
+        await self._update_offer_truce(
+            user_id, slug, transaction_atomic, channel_layer, "pending", "accepted"
+        )
 
     async def update_item(
         self,
@@ -136,6 +175,7 @@ class ConflictService:
         user_id: UUID,
         slug: str,
         item_id: UUID,
+        item_title: str,
         new_value: str,
         transaction_atomic: Callable,
     ) -> dict[str, Any]:
@@ -161,14 +201,26 @@ class ConflictService:
                 old_value = item.partner_choice_value
                 item.partner_choice_value = new_value
 
-            await self.event_repo.save(
+            event_entity: ConflictEvent = ConflictEvent(
                 conflict_id=conflict.id,
                 event_type=event_type,
-                user_id=user_id,
-                item_id=item.id,
+                initiator_id=(
+                    conflict.creator_id
+                    if conflict.creator_id == user_id
+                    else conflict.partner_id
+                ),
+                initiator_username=(
+                    conflict.creator_username
+                    if conflict.creator_id == user_id
+                    else conflict.partner_username
+                ),
+                item_id=item_id,
+                item_title=item_title,
                 old_value=old_value,
                 new_value=new_value,
             )
+
+            await self.event_repo.save(event_entity)
 
             if (item.creator_choice_value and item.partner_choice_value) and (
                 item.creator_choice_value == item.partner_choice_value
@@ -177,12 +229,13 @@ class ConflictService:
                 item.is_agreed = True
 
                 self._update_progress(conflict, item.id)
-                await self.conflict_repo.save(
-                    conflict, update_fields=["progress", "status"]
-                )
-                await self.event_repo.save(
+                event_entity: ConflictEvent = ConflictEvent(
                     conflict_id=conflict.id,
                     event_type="conflict_resolved",
+                )
+                await self.event_repo.save(event_entity)
+                conflict: Conflict = await self.conflict_repo.save(
+                    conflict, update_fields=["progress", "status"]
                 )
 
             await self.item_repo.save(
@@ -194,11 +247,68 @@ class ConflictService:
                     "is_agreed",
                 ],
             )
+
             return (
                 self._to_conflict_dto_detail(conflict).to_dict()
                 if item.is_agreed
                 else self._to_item_dto(item).to_dict()
             )
+
+    async def _update_offer_truce(
+        self,
+        user_id: UUID,
+        slug: str,
+        transaction_atomic: Callable,
+        channel_layer: Callable,
+        old_truce_status: str,
+        new_truce_status: str,
+    ) -> dict[str, Any]:
+        async with transaction_atomic():
+            conflict_entity: Optional[Conflict] = await self.conflict_repo.get_by_slug(
+                slug
+            )
+            self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
+
+            event_entity: ConflictEvent = ConflictEvent(
+                conflict_id=conflict_entity.id,
+                event_type="truce_offer",
+                initiator_id=user_id,
+                initiator_username=(
+                    conflict_entity.creator_username
+                    if conflict_entity.creator_id == user_id
+                    else conflict_entity.partner_username
+                ),
+                old_value=old_truce_status,
+                new_value=new_truce_status,
+            )
+            await self.event_repo.save(event_entity)
+
+            conflict_entity.truce_status = new_truce_status
+            conflict_entity.truce_initiator_id = user_id
+            conflict_entity.truce_initiator_username = (
+                conflict_entity.creator_username
+                if user_id == conflict_entity.creator_id
+                else conflict_entity.partner_username
+            )
+            saved_conflict: Conflict = await self.conflict_repo.save(
+                conflict_entity,
+                update_fields=[
+                    "truce_status",
+                    "truce_initiator_id",
+                    "truce_initiator_username",
+                ],
+            )
+
+            await channel_layer().group_send(
+                f"conflict_{slug}",
+                {
+                    "type": "conflict.truce_offer",
+                    "truce_status": event_entity.new_value,
+                    "initiator_id": event_entity.initiator_id,
+                    "initiator_username": event_entity.initiator_username,
+                },
+            )
+            return self._to_conflict_dto_schort(saved_conflict).to_dict()
 
     def _update_progress(self, conflict: Conflict, item_id: UUID) -> None:
         for index, item in enumerate(conflict.items):
@@ -215,60 +325,51 @@ class ConflictService:
             conflict.status = "resolved"
 
     def _to_conflict_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
-        items: list[dict] = [
-            self._to_item_dto(item).to_dict() for item in conflict.items
-        ]
-        events: list[dict] = [
-            self._to_event_dto(event).to_dict() for event in conflict.events
-        ]
-
-        return ConflictDetailDTO(
-            id=conflict.id,
-            creator_id=conflict.creator_id,
-            creator_username=conflict.creator_username,
-            partner_id=conflict.partner_id,
-            partner_username=conflict.partner_username,
-            title=conflict.title,
-            status=conflict.status,
-            slug=conflict.slug,
-            progress=conflict.progress,
-            created_at=conflict.created_at,
-            resolved_at=conflict.resolved_at,
-            truce_status=conflict.truce_status,
-            truce_initiator_id=conflict.truce_initiator_id,
-            truce_initiator_username=conflict.truce_initiator_username,
-            items=items,
-            events=events,
-        )
+        data = asdict(conflict)
+        data["items"] = [self._to_item_dto(i).to_dict() for i in conflict.items]
+        data["events"] = [self._to_event_dto(e).to_dict() for e in conflict.events]
+        return ConflictDetailDTO(**data)
 
     def _to_conflict_dto_schort(self, conflict: Conflict) -> ConflictShortDTO:
-        return ConflictShortDTO(
-            id=conflict.id,
-            creator_id=conflict.creator_id,
-            partner_id=conflict.partner_id,
-            title=conflict.title,
-            status=conflict.status,
-            progress=conflict.progress,
-            resolved_at=conflict.resolved_at,
-        )
+        ALLOWED_FIELDS = {
+            "id",
+            "creator_id",
+            "creator_username",
+            "partner_id",
+            "partner_username",
+            "title",
+            "status",
+            "progress",
+            "resolved_at",
+        }
+        return self._build_dto(ConflictShortDTO, conflict, ALLOWED_FIELDS)
 
     def _to_item_dto(self, item: ConflictItem) -> ConflictItemDTO:
-        return ConflictItemDTO(
-            id=item.id,
-            title=item.title,
-            creator_choice_value=item.creator_choice_value,
-            partner_choice_value=item.partner_choice_value,
-            agreed_choice_value=item.agreed_choice_value,
-            is_agreed=item.is_agreed,
-        )
+        ALLOWED_FIELDS = {
+            "id",
+            "title",
+            "creator_choice_value",
+            "partner_choice_value",
+            "agreed_choice_value",
+            "is_agreed",
+        }
+        return self._build_dto(ConflictItemDTO, item, ALLOWED_FIELDS)
 
     def _to_event_dto(self, event: ConflictEvent) -> ConflictEventDTO:
-        return ConflictEventDTO(
-            id=event.id,
-            event_type=event.event_type,
-            created_at=event.created_at,
-            initiator=event.initiator,
-            item_id=event.item_id,
-            old_value=event.old_value,
-            new_value=event.new_value,
-        )
+        ALLOWED_FIELDS = {
+            "id",
+            "event_type",
+            "created_at",
+            "initiator_id",
+            "initiator_username",
+            "item_id",
+            "item_title",
+            "old_value",
+            "new_value",
+        }
+        return self._build_dto(ConflictEventDTO, event, ALLOWED_FIELDS)
+
+    def _build_dto(self, dto, entity, allowed_fields: set[str]):
+        data = asdict(entity)
+        filtered = {k: v for k, v in data.items() if k in allowed_fields}
+        return dto(**filtered)
