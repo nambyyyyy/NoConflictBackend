@@ -149,17 +149,12 @@ class ConflictService:
                 slug
             )
             self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
+            self.conflict_valid.validate_delete_conflict(conflict_entity, user_id)
 
             if user_id == conflict_entity.creator_id:
-                if conflict_entity.deleted_by_creator:
-                    raise ConflictError("Конфликт уже удален")
-
                 conflict_entity.deleted_by_creator = True
 
             elif user_id == conflict_entity.partner_id:
-                if conflict_entity.deleted_by_partner:
-                    raise ConflictError("Конфликт уже удален")
-
                 conflict_entity.deleted_by_partner = True
 
             if (

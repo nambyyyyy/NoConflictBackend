@@ -63,4 +63,4 @@ class ConflictValidator:
         if (conflict.created_at == user_id and conflict.deleted_by_creator) or (
             conflict.partner_id == user_id and conflict.deleted_by_partner
         ):
-            raise ConflictError("Conflict removed")
+            raise ConflictError("Conflict already removed")
