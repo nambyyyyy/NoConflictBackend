@@ -19,13 +19,5 @@ class IsDeletedModel(BaseModel):
     class Meta:
         abstract = True
 
-    def delete(self, *args, **kwargs):
-        # Мягкое удаление is_deleted=True
-        self.is_deleted = True
-        self.deleted_at = timezone.now()
-        self.save(update_fields=["is_deleted", "deleted_at"])
 
-    def hard_delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        
         

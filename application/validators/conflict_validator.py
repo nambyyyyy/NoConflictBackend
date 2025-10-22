@@ -58,3 +58,9 @@ class ConflictValidator:
             conflict.partner_id,
         ):
             raise ConflictError("Conflict not found")
+
+    def validate_delete_conflict(self, conflict: Conflict, user_id: UUID) -> None:
+        if (conflict.created_at == user_id and conflict.deleted_by_creator) or (
+            conflict.partner_id == user_id and conflict.deleted_by_partner
+        ):
+            raise ConflictError("Conflict removed")

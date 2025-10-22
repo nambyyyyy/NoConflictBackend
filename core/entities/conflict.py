@@ -27,6 +27,8 @@ class Conflict:
 
     deleted_by_creator: bool = False
     deleted_by_partner: bool = False
+    is_deleted: bool = False
+    deleted_at: Optional[datetime] = None
 
     truce_status: str = "none"  # none / pending / accepted
     truce_initiator_id: Optional[UUID] = None

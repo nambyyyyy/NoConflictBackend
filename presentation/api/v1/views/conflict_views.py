@@ -58,6 +58,9 @@ class BaseConflictActionView(APIView):
             result = await service_method(
                 request.user.id, slug, transaction.atomic, get_channel_layer
             )
+        elif method == "delete":
+            await service_method(request.user.id, slug, transaction.atomic)
+            return
         else:
             raise ValueError(f"Unsupported method {method}")
 
@@ -68,7 +71,7 @@ class BaseConflictActionView(APIView):
         try:
             conflict_dto: dict[str, Any] = await self._action(
                 request, slug, method="post"
-            )
+            ) # type: ignore
             return Response(conflict_dto, status=201)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
@@ -79,8 +82,19 @@ class BaseConflictActionView(APIView):
         try:
             conflict_dto: dict[str, Any] = await self._action(
                 request, slug, method="get"
-            )
+            ) # type: ignore
             return Response(conflict_dto, status=200)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=400)
+        except Exception as e:
+            return Response({"error": "Internal server error"}, status=500)
+
+    async def delete(self, request, slug):
+        try:
+            await self._action(
+                request, slug, method="delete"
+            )
+            return Response(status=204)
         except ValueError as e:
             return Response({"error": str(e)}, status=400)
         except Exception as e:
@@ -93,6 +107,10 @@ class ConflictView(BaseConflictActionView):
 
 class CancelConflictView(BaseConflictActionView):
     service_method_name = "cancel_conflict"
+
+
+class DeleteConflictView(BaseConflictActionView):
+    service_method_name = "delete_conflict"
 
 
 class CreateOfferTruceView(BaseConflictActionView):

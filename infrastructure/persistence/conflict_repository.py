@@ -34,12 +34,15 @@ class DjangoConflictRepository(ConflictRepository):
 
     async def get_by_slug(self, slug: str) -> Conflict:
         return await self._base_get("slug", slug)
+    
+        pass
 
     async def save(
         self,
         conflict: Conflict,
         update_fields: Optional[list[str]] = None,
-    ) -> Conflict:
+        return_none: bool = False
+    ) -> Optional[Conflict]:
         if update_fields is None:
             defaults = {
                 "creator_id": conflict.creator_id,
@@ -61,7 +64,8 @@ class DjangoConflictRepository(ConflictRepository):
             id=conflict.id,
             defaults=defaults,
         )
-        return await self._base_get("id", django_conflict.id)
+        if not return_none:
+            return await self._base_get("id", django_conflict.id)
 
     def _to_entity_items(self, django_conflict: ConflictModel) -> list[ConflictItem]:
         items_data = [

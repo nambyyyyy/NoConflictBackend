@@ -82,7 +82,7 @@ class ConflictService:
                 await self.event_repo.save(event)
             for item in items_entitys:
                 await self.item_repo.save(item)
-            saved_conflict: Conflict = await self.conflict_repo.save(conflict_entity)
+            saved_conflict: Conflict = await self.conflict_repo.save(conflict_entity)  # type: ignore
 
             conflict_dto: ConflictDetailDTO = self._to_conflict_dto_detail(
                 saved_conflict
@@ -92,6 +92,7 @@ class ConflictService:
     async def get_conflict(self, user_id: UUID, slug: str) -> dict[str, Any]:
         conflict_entity: Conflict = await self.conflict_repo.get_by_slug(slug)
         self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
+        self.conflict_valid.validate_delete_conflict(conflict_entity, user_id)
         return self._to_conflict_dto_detail(conflict_entity).to_dict()
 
     async def cancel_conflict(
@@ -124,7 +125,7 @@ class ConflictService:
 
             saved_conflict: Conflict = await self.conflict_repo.save(
                 conflict_entity, update_fields=["status", "resolved_at"]
-            )
+            )  # type: ignore
 
         await channel_layer().group_send(
             f"conflict_{slug}",
@@ -139,6 +140,45 @@ class ConflictService:
         )
         conflict_dto: ConflictShortDTO = self._to_conflict_dto_schort(saved_conflict)
         return conflict_dto.to_dict()
+
+    async def delete_conflict(
+        self, user_id: UUID, slug: str, transaction_atomic: Callable
+    ):
+        with transaction_atomic():
+            conflict_entity: Optional[Conflict] = await self.conflict_repo.get_by_slug(
+                slug
+            )
+            self.conflict_valid.validate_access_conflict(conflict_entity, user_id)
+
+            if user_id == conflict_entity.creator_id:
+                if conflict_entity.deleted_by_creator:
+                    raise ConflictError("Конфликт уже удален")
+
+                conflict_entity.deleted_by_creator = True
+
+            elif user_id == conflict_entity.partner_id:
+                if conflict_entity.deleted_by_partner:
+                    raise ConflictError("Конфликт уже удален")
+
+                conflict_entity.deleted_by_partner = True
+
+            if (
+                conflict_entity.deleted_by_creator
+                and conflict_entity.deleted_by_partner
+            ):
+                conflict_entity.is_deleted = True
+                conflict_entity.resolved_at = datetime.now(timezone.utc)
+
+            await self.conflict_repo.save(
+                conflict_entity,
+                update_fields=[
+                    "deleted_by_creator",
+                    "deleted_by_partner",
+                    "is_deleted",
+                    "resolved_at",
+                ],
+                return_none=True,
+            )
 
     async def create_offer_truce(
         self,
@@ -241,8 +281,8 @@ class ConflictService:
                 )
                 await self.event_repo.save(event_entity)
                 conflict: Conflict = await self.conflict_repo.save(
-                    conflict, update_fields=["progress", "status"]
-                )
+                    conflict, update_fields=["progress", "status", "resolved_at"]
+                )  # type: ignore
 
             await self.item_repo.save(
                 item,
@@ -301,9 +341,8 @@ class ConflictService:
                 update_fields=[
                     "truce_status",
                     "truce_initiator_id",
-                    "truce_initiator_username",
                 ],
-            )
+            )  # type: ignore
 
             await channel_layer().group_send(
                 f"conflict_{slug}",
@@ -329,6 +368,7 @@ class ConflictService:
         )
         if conflict.progress >= 100:
             conflict.status = "resolved"
+            conflict.resolved_at = datetime.now(timezone.utc)
 
     def _to_conflict_dto_detail(self, conflict: Conflict) -> ConflictDetailDTO:
         data = asdict(conflict)

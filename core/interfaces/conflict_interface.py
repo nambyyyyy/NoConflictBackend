@@ -22,13 +22,19 @@ class ConflictRepository(ABC):
     async def get_by_slug(self, slug: str) -> Conflict:
         """Вернуть Conflict по slug"""
         pass
+    
+    @abstractmethod
+    async def delete(self, slug: str):
+        """Удлить конфликт по slug"""
+        pass
 
     @abstractmethod
     async def save(
         self,
         conflict: Conflict,
         update_fields: Optional[list[str]] = None,
-    ) -> Conflict:
+        return_none: bool = False
+    ) -> Optional[Conflict]:
         """Создать или обновить конфликт"""
         pass
     
